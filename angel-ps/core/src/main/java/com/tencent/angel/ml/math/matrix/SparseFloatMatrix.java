@@ -17,12 +17,13 @@
 
 package com.tencent.angel.ml.math.matrix;
 
+import com.tencent.angel.ml.math.TVector;
 import com.tencent.angel.ml.math.vector.SparseFloatVector;
 
 /**
  * Sparse float matrix that is represented by a group of sparse float vector {@link SparseFloatVector}
  */
-public class SparseFloatMatrix extends TFloatMatrix<SparseFloatVector>{
+public class SparseFloatMatrix extends TFloatMatrix{
   /**
    * Create a new float matrix.
    *
@@ -30,14 +31,10 @@ public class SparseFloatMatrix extends TFloatMatrix<SparseFloatVector>{
    * @param col the col
    */
   public SparseFloatMatrix(int row, int col) {
-    super(row, col, new SparseFloatVector[row]);
+    super(row, col);
   }
 
-  public SparseFloatMatrix(int row, int col, SparseFloatVector[] vectors) {
-    super(row, col, vectors);
-  }
-
-  @Override public SparseFloatVector initVector(int rowIndex) {
+  @Override public TVector initVector(int rowIndex) {
     SparseFloatVector ret = new SparseFloatVector((int)col);
     ret.setMatrixId(matrixId);
     ret.setRowId(rowIndex);

@@ -33,11 +33,7 @@ public class DenseIntMatrix extends TIntMatrix {
    * @param col the col number
    */
   public DenseIntMatrix(int row, int col) {
-    super(row, col, new DenseIntVector[row]);
-  }
-
-  public DenseIntMatrix(int row, int col, DenseIntVector[] vectors) {
-    super(row, col, vectors);
+    super(row, col);
   }
 
   /**
@@ -83,5 +79,14 @@ public class DenseIntMatrix extends TIntMatrix {
     ret.setMatrixId(matrixId);
     ret.setRowId(rowIndex);
     return ret;
+  }
+
+  @Override
+  public TVector getTVector(int rowIndex) {
+    if(vectors[rowIndex] == null) {
+      vectors[rowIndex] = initVector(rowIndex);
+    }
+
+    return vectors[rowIndex];
   }
 }

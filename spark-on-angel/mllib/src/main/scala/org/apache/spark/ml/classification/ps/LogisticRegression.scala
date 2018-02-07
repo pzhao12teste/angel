@@ -52,9 +52,7 @@ import org.apache.spark.util.VersionUtils
 
 import com.tencent.angel.spark.ml.optimize.OWLQN
 import com.tencent.angel.spark.models.vector.PSVector
-import com.tencent.angel.spark.models.vector.cache.PullMan
-import com.tencent.angel.spark.models.vector.enhanced.BreezePSVector
-import com.tencent.angel.spark.linalg.{DenseVector => SONADV}
+import com.tencent.angel.spark.models.vector.enhanced.{BreezePSVector, PullMan}
 
 /**
  * Params for logistic regression.
@@ -482,7 +480,7 @@ class LogisticRegression @Since("1.2.0") (
         }
 
         val flatFeatureStdKey = PSVector.dense(coefficientSize, 100)
-        flatFeatureStdKey.push(new SONADV(flatFeatureStd))
+        flatFeatureStdKey.push(flatFeatureStd)
 
         val costFun = new LogisticCostFun(instances, numClasses, summarizer.totalWeightSum,
           flatFeatureStdKey, $(fitIntercept), $(standardization), regParamL2,
@@ -517,7 +515,7 @@ class LogisticRegression @Since("1.2.0") (
           }
 
           val regL1 = (0 until coefficientSize).toArray.map(regParamL1Fun)
-          val brzRegL1 = PSVector.duplicate(flatFeatureStdKey).push(regL1).toBreeze
+          val brzRegL1 = PSVector.duplicate(flatFeatureStdKey).fill(regL1).toBreeze
 
           new OWLQN($(maxIter), 10, brzRegL1, $(tol))
         }
@@ -638,7 +636,7 @@ class LogisticRegression @Since("1.2.0") (
            Note that the intercept in scaled space and original space is the same;
            as a result, no scaling is needed.
          */
-        val allCoefficients = state.x.pull.toDense.values
+        val allCoefficients = state.x.pull()
         val allCoefMatrix = new DenseMatrix(numCoefficientSets, numFeaturesPlusIntercept,
           allCoefficients)
         val denseCoefficientMatrix = new DenseMatrix(numCoefficientSets, numFeatures,
@@ -1331,7 +1329,7 @@ private class LogisticCostFun(
         numClasses, numFeatures.toInt, weightSum, fitIntercept, multinomial)
       val (gradient, loss) = aggregator.calculate(iter)
 
-      gradientPS.toCache.increment(new SONADV(gradient))
+      gradientPS.increment(gradient)
       Iterator.single(loss)
     }.sum()
 

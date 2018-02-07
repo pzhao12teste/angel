@@ -23,7 +23,7 @@ import org.apache.commons.logging.LogFactory;
 /**
  * Dense double matrix that is represented by a group of dense float vector {@link DenseFloatVector}
  */
-public class DenseFloatMatrix extends TFloatMatrix<DenseFloatVector>  {
+public class DenseFloatMatrix extends TFloatMatrix {
   private static final Log LOG = LogFactory.getLog(DenseFloatMatrix.class);
 
   /**
@@ -33,11 +33,7 @@ public class DenseFloatMatrix extends TFloatMatrix<DenseFloatVector>  {
    * @param col the col
    */
   public DenseFloatMatrix(int row, int col) {
-    this(row, col, new DenseFloatVector[row]);
-  }
-
-  public DenseFloatMatrix(int row, int col, DenseFloatVector[] vectors) {
-    super(row, col, vectors);
+    super(row, col);
   }
 
   /**

@@ -17,7 +17,6 @@
 package com.tencent.angel.ml.math.vector;
 
 import com.tencent.angel.ml.math.TVector;
-import com.tencent.angel.ml.matrix.RowType;
 import com.tencent.angel.protobuf.generated.MLProtos;
 import org.junit.Test;
 
@@ -148,7 +147,7 @@ public class SparseFloatVectorTest {
   @Test
   public void getType() throws Exception {
     SparseFloatVector vec = genSparseFloatVector(nnz, dim);
-    assertEquals(RowType.T_FLOAT_SPARSE, vec.getType());
+    assertEquals(MLProtos.RowType.T_FLOAT_SPARSE, vec.getType());
   }
 
   @Test

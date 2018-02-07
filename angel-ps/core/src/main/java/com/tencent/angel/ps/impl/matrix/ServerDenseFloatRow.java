@@ -16,7 +16,7 @@
 
 package com.tencent.angel.ps.impl.matrix;
 
-import com.tencent.angel.ml.matrix.RowType;
+import com.tencent.angel.protobuf.generated.MLProtos;
 import io.netty.buffer.ByteBuf;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -26,12 +26,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.util.Arrays;
 
 /**
  * The class represent dense float row on parameter server.
  */
-public class ServerDenseFloatRow extends ServerFloatRow {
+public class ServerDenseFloatRow extends ServerRow {
 
   private final static Log LOG = LogFactory.getLog(ServerDenseFloatRow.class);
   /** Byte array */
@@ -76,13 +75,9 @@ public class ServerDenseFloatRow extends ServerFloatRow {
     this(0, 0, 0, null);
   }
 
-  @Override public float getValue(int index) {
-    return data.get(index - (int) startCol);
-  }
-
   @Override
-  public RowType getRowType() {
-    return RowType.T_FLOAT_DENSE;
+  public MLProtos.RowType getRowType() {
+    return MLProtos.RowType.T_FLOAT_DENSE;
   }
 
   @Override
@@ -91,7 +86,7 @@ public class ServerDenseFloatRow extends ServerFloatRow {
   }
 
   @Override
-  public void update(RowType rowType, ByteBuf buf, int size) {
+  public void update(MLProtos.RowType rowType, ByteBuf buf, int size) {
     try {
       lock.writeLock().lock();
       switch (rowType) {
@@ -209,15 +204,6 @@ public class ServerDenseFloatRow extends ServerFloatRow {
   @Override
   public int bufferLen() {
     return super.bufferLen() + 4 + dataBuffer.length;
-  }
-
-  @Override public void reset() {
-    try {
-      lock.writeLock().lock();
-      Arrays.fill(dataBuffer, (byte) 0);
-    } finally {
-      lock.writeLock().unlock();
-    }
   }
 
   /**

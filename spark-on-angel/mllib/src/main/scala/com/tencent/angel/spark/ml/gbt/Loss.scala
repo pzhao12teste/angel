@@ -18,47 +18,25 @@ package com.tencent.angel.spark.ml.gbt
 
 trait Loss extends Serializable {
 
-  def transPred(pred: Float): Float
-
   def firstGradient(label: Float, pred: Float): Float
 
   def secondGradient(label: Float, pred: Float): Float
 
-  def evalMetric: String
 }
 
 
 class LeastSquareLoss extends Loss {
 
-  def value(label: Float, pred: Float): Float = {
-    (label - pred) * (label - pred)
-  }
-
-  def transPred(pred: Float): Float = {
-    pred
-  }
-
-  def firstGradient(label: Float, pred: Float): Float = {
+  override def firstGradient(label: Float, pred: Float): Float = {
       pred - label
   }
 
-  def secondGradient(label: Float, pred: Float): Float = {
+  override def secondGradient(label: Float, pred: Float): Float = {
     1.0f
   }
-
-  def evalMetric: String = "RMSE"
 }
 
 class LogisticLoss extends Loss {
-
-  def value(label: Float, pred: Float): Float = {
-    (label * math.log(pred) + (1 - label) * math.log(1 - pred)).toFloat
-  }
-
-  def transPred(pred: Float): Float = {
-    1.0f / (1 + math.exp(-1 * pred).toFloat)
-  }
-
   override def firstGradient(label: Float, pred: Float): Float = {
     pred -  label
   }
@@ -68,6 +46,5 @@ class LogisticLoss extends Loss {
     Math.max(pred * (1 - pred), eps)
   }
 
-  def evalMetric: String = "AUC"
 }
 

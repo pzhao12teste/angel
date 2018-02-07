@@ -103,7 +103,7 @@ object BreezeLBFGS {
       }
     }
     println(s"loss history: ${lossHistory.toArray.mkString(" ")}")
-    println(s"weights: ${weight.pull.toDense.values.mkString(" ")}")
+    println(s"weights: ${weight.pull().mkString(" ")}")
   }
 
   def runPsAggregateLBFGS(
@@ -124,6 +124,6 @@ object BreezeLBFGS {
       }
     }
     println(s"loss history: ${lossHistory.toArray.mkString(" ")}")
-    println(s"weights: ${weight.pull.toDense.values.mkString(" ")}")
+    println(s"weights: ${weight.pull().mkString(" ")}")
   }
 }

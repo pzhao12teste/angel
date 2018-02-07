@@ -17,7 +17,6 @@
 package com.tencent.angel.ml.math.vector;
 
 import com.tencent.angel.ml.math.TAbstractVector;
-import com.tencent.angel.ml.matrix.RowType;
 import com.tencent.angel.protobuf.generated.MLProtos;
 import org.junit.Test;
 
@@ -161,7 +160,7 @@ public class DenseIntVectorTest {
     int[] values = new int[]{1, 2, 3, 0, 0, 4, 5, 0, 0, 7};
     DenseIntVector vec = new DenseIntVector(10, values);
 
-    assertEquals(RowType.T_INT_DENSE, vec.getType());
+    assertEquals(MLProtos.RowType.T_INT_DENSE, vec.getType());
   }
 
   @Test

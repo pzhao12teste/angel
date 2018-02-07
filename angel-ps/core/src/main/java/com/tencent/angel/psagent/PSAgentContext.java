@@ -18,23 +18,18 @@ package com.tencent.angel.psagent;
 
 import com.tencent.angel.RunningMode;
 import com.tencent.angel.conf.AngelConf;
-import com.tencent.angel.ml.matrix.transport.PSFailedReport;
+import com.tencent.angel.ml.matrix.MatrixMetaManager;
 import com.tencent.angel.protobuf.generated.MLProtos.PSAgentAttemptIdProto;
 import com.tencent.angel.psagent.client.MasterClient;
 import com.tencent.angel.psagent.clock.ClockCache;
 import com.tencent.angel.psagent.consistency.ConsistencyController;
 import com.tencent.angel.psagent.executor.Executor;
-import com.tencent.angel.psagent.matrix.MatrixClientFactory;
-import com.tencent.angel.psagent.matrix.PSAgentLocationManager;
-import com.tencent.angel.psagent.matrix.PSAgentMatrixMetaManager;
 import com.tencent.angel.psagent.matrix.cache.MatricesCache;
 import com.tencent.angel.psagent.matrix.oplog.cache.MatrixOpLogCache;
 import com.tencent.angel.psagent.matrix.storage.MatrixStorageManager;
 import com.tencent.angel.psagent.matrix.transport.MatrixTransportClient;
 import com.tencent.angel.psagent.matrix.transport.adapter.MatrixClientAdapter;
 import com.tencent.angel.psagent.task.TaskContext;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 
 import java.util.Map;
@@ -44,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * Ps agent context, it is used to share information between the all components in ps agent
  */
 public class PSAgentContext {
-  private static final Log LOG = LogFactory.getLog(PSAgentContext.class);
   private static PSAgentContext context = new PSAgentContext();
   
   /**ps agent*/
@@ -81,7 +75,6 @@ public class PSAgentContext {
    * @param psAgent ps agent
    */
   public void setPsAgent(PSAgent psAgent) {
-    LOG.info("==================Set psAgent=" + psAgent + "======================");
     this.psAgent = psAgent;
   }
 
@@ -140,11 +133,20 @@ public class PSAgentContext {
   }
 
   /**
+   * Get matrix partition router manager
+   * 
+   * @return MatrixPartitionRouter matrix partition router manager
+   */
+  public MatrixPartitionRouter getMatrixPartitionRouter() {
+    return psAgent.getMatrixPartitionRouter();
+  }
+
+  /**
    * Get matrix meta manager
    * 
    * @return MatrixMetaManager matrix meta manager
    */
-  public PSAgentMatrixMetaManager getMatrixMetaManager() {
+  public MatrixMetaManager getMatrixMetaManager() {
     return psAgent.getMatrixMetaManager();
   }
 
@@ -162,8 +164,8 @@ public class PSAgentContext {
    * 
    * @return LocationCache ps location cache
    */
-  public PSAgentLocationManager getLocationManager() {
-    return psAgent.getLocationManager();
+  public LocationCache getLocationCache() {
+    return psAgent.getLocationCache();
   }
 
   /**
@@ -310,11 +312,5 @@ public class PSAgentContext {
    */
   public int getLocalTaskNum() {
     return getExecutor().getTaskNum();
-  }
-
-  public void clear() {
-    MatrixClientFactory.clear();
-    psAgent = null;
-    taskContexts.clear();
   }
 }

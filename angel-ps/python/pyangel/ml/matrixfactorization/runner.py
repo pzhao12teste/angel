@@ -30,5 +30,29 @@ class MatrixFactorizationRunner(MLRunner):
         Training job to obtain a model
         :param conf: configuration for parameter settings
         """
-        jconf = conf.dict_to_jconf()
-        super(MatrixFactorizationRunner, self).train(conf, conf._jvm.com.tencent.angel.ml.matrixfactorization.MFModel(jconf, None), 'com.tencent.angel.ml.matrixfactorization.MFTrainTask')
+        conf.set(AngelConf.ANGEL_TASK_USER_TASKCLASS, 'com.tencent.angel.ml.matrixfactorization.MFTrainTask')
+
+        # Create an angel job client
+        client = AngelClientFactory.get(conf)
+
+        # Submit this application
+        client.startPSServer()
+
+        # Create a MFModel
+        mfModel = conf._jvm.com.tencent.angel.ml.matrixfactorization.MFModel(conf._jconf, None)
+
+        # Load model meta to client
+        client.loadModel(mfModel)
+
+        # Start
+        client.runTask('com.tencent.angel.ml.matrixfactorization.MFTrainTask')
+
+        # Run user task and wait for completion
+        # User task is set in AngelConf.ANGEL_TASK_USER_TASKCLASS
+        client.waitForCompletion()
+
+        # Save the trained model to HDFS
+        client.saveModel(mfModel)
+
+        # Stop
+        client.stop()

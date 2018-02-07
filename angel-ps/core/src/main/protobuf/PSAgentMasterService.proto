@@ -26,29 +26,6 @@ option optimize_for = SPEED;
 
 import "ML.proto";
 
-message GetAllPSAgentLocationRequest {
-
-}
-
-message GetAllPSAgentLocationResponse {
-  repeated PSAgentLocationProto psAgentLocations = 1;
-}
-
-message GetMatricesRequest{
-  repeated string matrixNames = 1;
-}
-
-message GetMatricesResponse{
-  repeated MatrixMetaProto matrixMetas = 1;
-}
-
-message ReleaseMatricesRequest{
-  repeated string matrixNames = 1;
-}
-
-message ReleaseMatricesResponse{
-}
-
 message PSAgentReportRequest {
   required PSAgentAttemptIdProto psAgentAttemptId = 1;
   repeated Pair pairs = 3; 
@@ -74,11 +51,21 @@ message PSAgentRegisterResponse{
   required PSAgentCommandProto command = 1 [default = PSAGENT_SUCCESS];
 }
 
-message GetAllMatrixMetaRequest {
+message GetAllMatrixInfoRequest {
 }
 
-message GetAllMatrixMetaResponse {
-  repeated MatrixMetaProto matrixMetas = 2;
+message GetAllMatrixInfoResponse {
+  required MatrixStatus matrixStatus = 1;
+  repeated MatrixProto matrixInfo = 2;  
+}
+
+message GetPSLocationRequest {
+  required PSIdProto psId = 1;
+}
+
+message GetPSLocationReponse {
+  required PSStatus psStatus = 1;
+  optional LocationProto location = 2;  
 }
 
 message FetchMinClockRequest {
@@ -143,33 +130,20 @@ message SetAlgoMetricsRequest {
 message SetAlgoMetricsResponse {
 }
 
-message PSFailedReportRequest {
-  required PSFailedReportsProto reports = 1;
-}
-
-message PSFailedReportResponse {
-}
-
 service PSAgentMasterService {
   rpc psAgentReport(PSAgentReportRequest) returns (PSAgentReportResponse);	
   rpc psAgentRegister(PSAgentRegisterRequest) returns (PSAgentRegisterResponse);
-  rpc getAllMatrixMeta(GetAllMatrixMetaRequest) returns (GetAllMatrixMetaResponse);
+  rpc getAllMatrixInfo(GetAllMatrixInfoRequest) returns (GetAllMatrixInfoResponse);
   rpc getAllPSLocation(GetAllPSLocationRequest) returns (GetAllPSLocationResponse);
   rpc getPSLocation(GetPSLocationRequest) returns (GetPSLocationReponse);
   rpc fetchMinClock(FetchMinClockRequest) returns (FetchMinClockResponse);
   rpc psAgentDone(PSAgentDoneRequest) returns (PSAgentDoneResponse);	
   rpc psAgentError(PSAgentErrorRequest) returns (PSAgentErrorResponse);
-
-  rpc createMatrices(CreateMatricesRequest) returns (CreateMatricesResponse);
-  rpc getMatrices(GetMatricesRequest) returns (GetMatricesResponse);
-  rpc releaseMatrices(ReleaseMatricesRequest) returns (ReleaseMatricesResponse);
-
+  rpc createMatrix(CreateMatrixRequest) returns (CreateMatrixResponse);
+  rpc getMatrixInfo(GetMatrixInfoRequest) returns (GetMatrixInfoResponse);
+  rpc releaseMatrix(ReleaseMatrixRequest) returns (ReleaseMatrixResponse);
   rpc taskClock(TaskClockRequest) returns (TaskClockResponse);
   rpc taskIteration(TaskIterationRequest) returns(TaskIterationResponse);
   rpc taskCountersUpdate(TaskCounterUpdateRequest) returns (TaskCountersUpdateResponse);
   rpc setAlgoMetrics(SetAlgoMetricsRequest) returns (SetAlgoMetricsResponse);
-
-  rpc psFailedReport(PSFailedReportRequest) returns (PSFailedReportResponse);
-  rpc getPartLocation(GetPartLocationRequest) returns (GetPartLocationResponse);
-  rpc getStoredPss(GetStoredPssRequest) returns (GetStoredPssResponse);
 }

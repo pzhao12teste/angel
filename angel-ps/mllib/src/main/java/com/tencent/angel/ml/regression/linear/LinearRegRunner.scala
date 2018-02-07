@@ -34,6 +34,7 @@ class LinearRegRunner extends MLRunner {
     */
   override
   def train(conf: Configuration): Unit = {
+    conf.setInt("angel.worker.matrix.transfer.request.timeout.ms", 60000)
     conf.set(AngelConf.ANGEL_TASK_USER_TASKCLASS, classOf[LinearRegTrainTask].getName)
 
     // Create an angel job client
@@ -69,6 +70,7 @@ class LinearRegRunner extends MLRunner {
     */
   override
   def predict(conf: Configuration): Unit = {
+    conf.setInt("angel.worker.matrix.transfer.request.timeout.ms", 60000)
     conf.set(AngelConf.ANGEL_TASK_USER_TASKCLASS, classOf[LinearRegPredictTask].getName)
 
     // Create an angel job client
@@ -99,6 +101,7 @@ class LinearRegRunner extends MLRunner {
    * @param conf: configuration of algorithm and resource
    */
   def incTrain(conf: Configuration): Unit = {
+    conf.setInt("angel.worker.matrix.transfer.request.timeout.ms", 60000)
     conf.set(AngelConf.ANGEL_TASK_USER_TASKCLASS, classOf[LinearRegTrainTask].getName)
 
     // Create an angel job client

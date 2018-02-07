@@ -17,12 +17,13 @@
 
 package com.tencent.angel.ml.math.matrix;
 
+import com.tencent.angel.ml.math.TVector;
 import com.tencent.angel.ml.math.vector.CompSparseFloatVector;
 
 /**
  * Sparse double matrix that is represented by a group of component sparse float vector  {@link CompSparseFloatVector}
  */
-public class CompSparseFloatMatrix extends TFloatMatrix<CompSparseFloatVector> {
+public class CompSparseFloatMatrix extends TFloatMatrix {
   /**
    * Create a ComponentSparseFloatMatrix
    *
@@ -30,14 +31,10 @@ public class CompSparseFloatMatrix extends TFloatMatrix<CompSparseFloatVector> {
    * @param col the col
    */
   public CompSparseFloatMatrix(int row, int col) {
-    this(row, col, new CompSparseFloatVector[row]);
+    super(row, col);
   }
 
-  public CompSparseFloatMatrix(int row, int col, CompSparseFloatVector[] vectors) {
-    super(row, col, vectors);
-  }
-
-  @Override public CompSparseFloatVector initVector(int rowIndex) {
+  @Override public TVector initVector(int rowIndex) {
     return new CompSparseFloatVector(matrixId, rowIndex, (int)col);
   }
 }

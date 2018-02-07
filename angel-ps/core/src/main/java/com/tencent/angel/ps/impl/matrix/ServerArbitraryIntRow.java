@@ -16,7 +16,8 @@
 
 package com.tencent.angel.ps.impl.matrix;
 
-import com.tencent.angel.ml.matrix.RowType;
+import com.tencent.angel.protobuf.generated.MLProtos;
+import com.tencent.angel.protobuf.generated.MLProtos.RowType;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.ints.Int2IntMap.Entry;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
@@ -30,8 +31,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import java.util.Arrays;
 
+import static com.tencent.angel.protobuf.generated.MLProtos.RowType.T_INT_DENSE;
+import static com.tencent.angel.protobuf.generated.MLProtos.RowType.T_INT_SPARSE;
 
 /**
  * The class represent arbitrary int row on parameter server. The row can convert between dense and
@@ -222,11 +224,11 @@ public class ServerArbitraryIntRow extends ServerRow {
   }
 
   @Override
-  public RowType getRowType() {
+  public MLProtos.RowType getRowType() {
     if (sparseRep != null)
-      return RowType.T_INT_SPARSE;
+      return MLProtos.RowType.T_INT_SPARSE;
     else
-      return RowType.T_INT_DENSE;
+      return MLProtos.RowType.T_INT_DENSE;
   }
 
   @SuppressWarnings("unused")
@@ -263,7 +265,7 @@ public class ServerArbitraryIntRow extends ServerRow {
     try {
       lock.readLock().lock();
       super.writeTo(output);
-      output.writeUTF(RowType.T_INT_DENSE.toString());
+      output.writeUTF(T_INT_DENSE.toString());
       int data[] = denseRep.array();
       // output.writeInt(data.length);
       for (int i = 0; i < data.length; i++) {
@@ -279,7 +281,7 @@ public class ServerArbitraryIntRow extends ServerRow {
     try {
       lock.readLock().lock();
       super.writeTo(output);
-      output.writeUTF(RowType.T_INT_SPARSE.toString());
+      output.writeUTF(T_INT_SPARSE.toString());
       output.writeInt(nnz);
       IntSet keys = sparseRep.keySet();
       output.writeInt(keys.size());
@@ -385,11 +387,11 @@ public class ServerArbitraryIntRow extends ServerRow {
     try {
       lock.readLock().lock();
       if (denseRep != null) {
-        return super.bufferLen() + buf.length;
+        return buf.length;
       } else if (sparseRep != null) {
-        return super.bufferLen() + nnz * 12;
+        return nnz * 12;
       } else {
-        return super.bufferLen();
+        return 0;
       }
     } finally {
       lock.readLock().unlock();
@@ -540,16 +542,6 @@ public class ServerArbitraryIntRow extends ServerRow {
     else
       encodeSparse(in, out, len);
 
-  }
-
-  @Override public void reset() {
-    if(sparseRep != null) {
-      sparseRep.clear();
-    }
-
-    if(denseRep != null && buf != null) {
-      Arrays.fill(buf, (byte) 0);
-    }
   }
 
   private void encodeSparse(ByteBuf in, ByteBuf out, int len) {

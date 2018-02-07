@@ -51,8 +51,8 @@ public abstract class UnaryAggrFunc extends GetFunc {
   @Override
   public PartitionGetResult partitionGet(PartitionGetParam partKey) {
     ServerPartition part =
-      psContext.getMatrixStorageManager()
-            .getPart(partKey.getMatrixId(), partKey.getPartKey().getPartitionId());
+        PSContext.get().getMatrixPartitionManager()
+            .getPartition(partKey.getMatrixId(), partKey.getPartKey().getPartitionId());
 
     if (part != null) {
       int rowId = ((UnaryAggrParam.UnaryPartitionAggrParam) partKey).getRowId();

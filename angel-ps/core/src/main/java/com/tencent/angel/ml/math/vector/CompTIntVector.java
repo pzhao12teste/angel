@@ -77,7 +77,7 @@ abstract class CompTIntVector extends TIntVector {
     this.dim = dim;
 
     List<PartitionKey> partKeyList =
-      PSAgentContext.get().getMatrixMetaManager().getPartitions(matrixId, rowIndex);
+      PSAgentContext.get().getMatrixPartitionRouter().getPartitionKeyList(matrixId, rowIndex);
 
     if (partKeyList.size() >= 1) {
       Collections.sort(partKeyList, new Comparator<PartitionKey>() {

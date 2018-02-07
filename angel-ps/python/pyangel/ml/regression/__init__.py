@@ -13,3 +13,8 @@
 # either express or implied. See the License for the specific language governing permissions and
 #
 
+from pyangel.ml.regression.linear import LinearRegRunner
+
+__all__ = [
+    "LinearRegRunner",
+]

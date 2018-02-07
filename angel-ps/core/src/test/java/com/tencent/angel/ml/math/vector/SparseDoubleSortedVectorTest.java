@@ -16,7 +16,6 @@
 
 package com.tencent.angel.ml.math.vector;
 
-import com.tencent.angel.ml.matrix.RowType;
 import com.tencent.angel.protobuf.generated.MLProtos;
 import org.junit.Test;
 
@@ -124,7 +123,7 @@ public class SparseDoubleSortedVectorTest {
   @Test
   public void getType() throws Exception {
     SparseDoubleSortedVector vec = new SparseDoubleSortedVector(10000, 300);
-    assertEquals(RowType.T_DOUBLE_SPARSE, vec.getType());
+    assertEquals(MLProtos.RowType.T_DOUBLE_SPARSE, vec.getType());
   }
 
   @Test

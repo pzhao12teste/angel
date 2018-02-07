@@ -31,4 +31,5 @@ trait Learner {
 
   def process(actionType: String, input: String, modelPath: String, testSet: String, output: String) = ???
 
+
 }

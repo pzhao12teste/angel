@@ -20,15 +20,14 @@ import breeze.linalg.DenseVector
 import breeze.optimize.LBFGS
 
 import com.tencent.angel.spark.context.PSContext
-import com.tencent.angel.spark.models.vector.PSVector
+import com.tencent.angel.spark.models.vector.{PSVector, VectorType}
 import com.tencent.angel.spark.models.vector.enhanced.BreezePSVector
+import com.tencent.angel.spark.ml.common.OneHot.OneHotVector
 import com.tencent.angel.spark.ml.sparse.SparseLogistic
 import com.tencent.angel.spark.ml.util.{ArgsUtil, DataLoader}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import scala.collection.mutable.ArrayBuffer
-
-import com.tencent.angel.spark.linalg.OneHotVector
 
 
 object SparseLRWithLBFGS {
@@ -51,24 +50,24 @@ object SparseLRWithLBFGS {
 
     if (updateType == "ps") PSContext.getOrCreate(spark.sparkContext)
 
-    val tempInstances = DataLoader.loadOneHotInstance(input, partitionNum, sampleRate, -1).rdd
+    val instances = DataLoader.loadOneHotInstance(input, partitionNum, sampleRate, -1).rdd
       .map { row =>
-        Tuple2(row.getAs[scala.collection.mutable.WrappedArray[Long]](1).toArray, row.getString(0).toDouble)
+        Tuple2(row.getAs[scala.collection.mutable.WrappedArray[Int]](1).toArray, row.getString(0).toDouble)
       }
-    val featLength = tempInstances.map { case (feature, label) => feature.max }.max() + 1
-    println(s"feat length: $featLength")
 
-    val instances = tempInstances.map { case (feat, label) => (new OneHotVector(featLength, feat), label)}
     instances.cache()
     println(s"instance num: ${instances.count()}")
+
+    val featLength = instances.map { case (feature, label) => feature.max }.max() + 1
+    println(s"feat length: $featLength")
 
     updateType match {
       case "spark" =>
         println(s"run spark lbfgs")
-        runLBFGSSpark(instances, featLength.toInt, stepSize, maxIter)
+        runLBFGSSpark(instances, featLength, stepSize, maxIter)
       case "ps" =>
         println(s"run angel ps lbfgs")
-        runLBFGSAngel(instances, featLength.toInt, stepSize, maxIter)
+        runLBFGSAngel(instances, featLength, stepSize, maxIter)
       case _ => println(s"wrong update type: $updateType (spark or ps)")
     }
   }
@@ -76,7 +75,7 @@ object SparseLRWithLBFGS {
 
   def runLBFGSSpark(trainData: RDD[(OneHotVector, Double)], dim: Int, m: Int, maxIter: Int): Unit = {
     val initWeight = new DenseVector[Double](dim)
-    val tol = 1e-9
+    val tol = 1e-6
     val lbfgs = new LBFGS[DenseVector[Double]](maxIter, m, tol)
     val states = lbfgs.iterations(SparseLogistic.Cost(trainData), initWeight)
 
@@ -95,7 +94,7 @@ object SparseLRWithLBFGS {
   }
 
   def runLBFGSAngel(trainData: RDD[(OneHotVector, Double)], dim: Int, m: Int, maxIter: Int): Unit = {
-    val initWeightPS = PSVector.dense(dim, 3 * m).toBreeze
+    val initWeightPS = PSVector.dense(dim, 5 * m).toBreeze
     val tol = 1e-6
     val lbfgs = new LBFGS[BreezePSVector](maxIter, m, tol)
     val states = lbfgs.iterations(SparseLogistic.PSCost(trainData), initWeightPS)
@@ -111,7 +110,7 @@ object SparseLRWithLBFGS {
       }
     }
     println(s"loss history: ${lossHistory.toArray.mkString(" ")}")
-    println(s"weights: ${weight.pull.toDense.values.take(10).mkString(" ")}")
+    println(s"weights: ${weight.pull().take(10).mkString(" ")}")
   }
 
 }

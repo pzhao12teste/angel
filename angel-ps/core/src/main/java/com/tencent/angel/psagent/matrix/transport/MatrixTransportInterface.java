@@ -23,7 +23,6 @@ import com.tencent.angel.ml.matrix.psf.get.base.PartitionGetResult;
 import com.tencent.angel.ml.matrix.psf.update.enhance.PartitionUpdateParam;
 import com.tencent.angel.ml.matrix.psf.update.enhance.UpdateFunc;
 import com.tencent.angel.ml.matrix.psf.update.enhance.VoidResult;
-import com.tencent.angel.ml.matrix.transport.GetClocksResponse;
 import com.tencent.angel.ps.ParameterServerId;
 import com.tencent.angel.ps.impl.matrix.ServerPartition;
 import com.tencent.angel.ps.impl.matrix.ServerRow;
@@ -72,7 +71,7 @@ public interface MatrixTransportInterface {
    * @param serverId ps id
    * @return Future<Map<PartitionKey, Integer>> matrix partition clocks
    */
-  Future<GetClocksResponse> getClocks(ParameterServerId serverId);
+  Future<Map<PartitionKey, Integer>> getClocks(ParameterServerId serverId);
 
   /**
    * Update a matrix partition.

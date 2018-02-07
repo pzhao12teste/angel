@@ -17,63 +17,43 @@
 package com.tencent.angel.ps.impl;
 
 import com.tencent.angel.AngelDeployMode;
-import com.tencent.angel.RunningMode;
 import com.tencent.angel.conf.AngelConf;
-import com.tencent.angel.ml.matrix.transport.PSFailedReport;
-import com.tencent.angel.ps.PSAttemptId;
-import com.tencent.angel.ps.backup.ha.push.PS2PSPusherImpl;
-import com.tencent.angel.ps.backup.snapshot.SnapshotDumper;
-import com.tencent.angel.ps.client.MasterClient;
-import com.tencent.angel.ps.client.PSLocationManager;
-import com.tencent.angel.ps.io.IOExecutors;
-import com.tencent.angel.ps.matrix.transport.WorkerPool;
+import com.tencent.angel.master.MasterProtocol;
 import org.apache.hadoop.conf.Configuration;
 
 /**
  * Context of parameter server.
  */
 public class PSContext {
-  /**
-   * PS
-   */
-  private final ParameterServer ps;
+  private static PSContext context = new PSContext();
+  private ParameterServer ps;
 
-  /**
-   * Create a PSContext
-   * @param ps PS
-   */
-  public PSContext(ParameterServer ps ) {
+  private PSContext() {}
+
+  public static PSContext get() {
+    return context;
+  }
+
+  public void setPs(ParameterServer ps) {
     this.ps = ps;
   }
 
-  /**
-   * Get application total task number
-   * @return application total task number
-   */
   public int getTaskNum() {
-    return getConf().getInt(AngelConf.ANGEL_TASK_ACTUAL_NUM, 1);
+    return ps.getConf().getInt(AngelConf.ANGEL_TASK_ACTUAL_NUM, 1);
   }
 
-  /**
-   * Get application configuration
-   * @return application configuration
-   */
+  public MatrixPartitionManager getMatrixPartitionManager() {
+    return ps.getMatrixPartitionManager();
+  }
+
   public Configuration getConf() {
     return ps.getConf();
   }
 
-  /**
-   * Get PS
-   * @return PS
-   */
   public ParameterServer getPs() {
     return ps;
   }
-
-  /**
-   * Get application deploy mode
-   * @return application deploy mode
-   */
+  
   public AngelDeployMode getDeployMode() {
     String mode =
         ps.getConf().get(AngelConf.ANGEL_DEPLOY_MODE,
@@ -86,110 +66,11 @@ public class PSContext {
     }
   }
 
-  /**
-   * Get the RPC client to Master
-   * @return the RPC client to Master
-   */
-  public MasterClient getMaster() {
+  public SnapshotManager getSnapshotManager() {
+    return ps.getSnapshotManager();
+  }
+  
+  public MasterProtocol getMaster() {
     return ps.getMaster();
-  }
-
-  /**
-   * Get Matrix meta manager
-   * @return Matrix meta manager
-   */
-  public PSMatrixMetaManager getMatrixMetaManager() {
-    return ps.getMatrixMetaManager();
-  }
-
-  /**
-   * Get clock vector manager
-   * @return clock vector manager
-   */
-  public ClockVectorManager getClockVectorManager() {
-    return ps.getClockVectorManager();
-  }
-
-  /**
-   * Get matrix storage manager
-   * @return matrix storage manager
-   */
-  public MatrixStorageManager getMatrixStorageManager() {
-    return ps.getMatrixStorageManager();
-  }
-
-  /**
-   * Get location manager
-   * @return location manager
-   */
-  public PSLocationManager getLocationManager() {
-    return ps.getLocationManager();
-  }
-
-  /**
-   * Get ps attempt id
-   * @return ps attempt id
-   */
-  public PSAttemptId getPSAttemptId() {
-    return ps.getPSAttemptId();
-  }
-
-  /**
-   * Get the RPC server for control message
-   * @return
-   */
-  public ParameterServerService getPsService() {
-    return ps.getPsService();
-  }
-
-  /**
-   * Get ps to ps pusher
-   * @return ps to ps pusher
-   */
-  public PS2PSPusherImpl getPS2PSPusher() {
-    return ps.getPs2PSPusher();
-  }
-
-  /**
-   * Get RPC worker pool for matrix transformation
-   * @return RPC worker pool for matrix transformation
-   */
-  public WorkerPool getWorkerPool() { return ps.getWorkerPool();}
-
-  /**
-   * Get matrices load/save worker pool
-   * @return matrices load/save worker pool
-   */
-  public IOExecutors getIOExecutors() {
-    return ps.getIOExecutors();
-  }
-
-  /**
-   * Get snapshot dumper
-   * @return snapshot dumper
-   */
-  public SnapshotDumper getSnapshotDumper() { return ps.getSnapshotDumper(); }
-
-  /**
-   * Get the replication number for a matrix partition
-   * @return the replication number for a matrix partition
-   */
-  public int getPartReplication() {
-    return getConf().getInt(AngelConf.ANGEL_PS_HA_REPLICATION_NUMBER,
-      AngelConf.DEFAULT_ANGEL_PS_HA_REPLICATION_NUMBER);
-  }
-
-  /**
-   * Get the application running mode
-   * @return the application running mode
-   */
-  public RunningMode getRunningMode() {
-    String modeStr = getConf().get(AngelConf.ANGEL_RUNNING_MODE,
-      AngelConf.DEFAULT_ANGEL_RUNNING_MODE);
-    return RunningMode.valueOf(modeStr);
-  }
-
-  public PSFailedReport getPSFailedReport() {
-    return ps.getPSFailedReport();
   }
 }

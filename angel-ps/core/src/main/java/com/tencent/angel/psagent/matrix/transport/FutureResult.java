@@ -74,4 +74,8 @@ public class FutureResult<T> implements Future<T> {
     this.result = result;
     counter.countDown();
   }
+
+  public void failed() {
+    counter.notifyAll();
+  }
 }

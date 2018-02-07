@@ -18,19 +18,10 @@
 package com.tencent.angel.spark.models.vector
 
 import com.tencent.angel.spark.context.PSContext
-import com.tencent.angel.spark.linalg.{DenseVector, SparseVector}
 
 class DensePSVector(override val poolId: Int,
                     override val id: Int,
-                    override val dimension: Long) extends ConcretePSVector {
-
-  override def pull: DenseVector = {
-    psClient.denseRowOps.pull(this)
-  }
-
-  def pull(indices: Array[Long]): SparseVector = {
-    psClient.denseRowOps.pull(this, indices)
-  }
+                    override val dimension: Long) extends PSVector {
 
   def one(): DensePSVector = {
     fill(1.0)
@@ -41,31 +32,30 @@ class DensePSVector(override val poolId: Int,
   }
 
   def fill(value: Double): DensePSVector = {
-    psClient.vectorOps.fill(this, value)
+    psClient.initOps.fill(this, value)
     this
   }
 
-  def push(local: DenseVector): DensePSVector = push(local.values)
-
-  def push(local: Array[Double]): DensePSVector = {
-    psClient.denseRowOps.push(this, local)
+  def fill(values: Array[Double]): DensePSVector = {
+    psClient.initOps.fill(this, values)
     this
   }
 
   def randomUniform(min: Double, max: Double): DensePSVector = {
-    psClient.denseRowOps.randomUniform(this, min, max)
+    psClient.initOps.randomUniform(this, min, max)
     this
   }
 
   def randomNormal(mean: Double, stddev: Double): DensePSVector = {
-    psClient.denseRowOps.randomNormal(this, mean, stddev)
+    psClient.initOps.randomNormal(this, mean, stddev)
     this
   }
+
 }
 
 object DensePSVector {
-  def apply(dimension: Int, capacity:Int = 20): DensePSVector = {
-    PSContext.instance().createVector(dimension, VectorType.DENSE, capacity)
-      .asInstanceOf[DensePSVector]
+  def apply(dimension: Int, capacity:Int): DensePSVector = {
+    PSContext.instance().createVector(dimension, VectorType.DENSE, capacity).asInstanceOf[DensePSVector]
   }
+
 }

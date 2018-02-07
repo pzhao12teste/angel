@@ -19,6 +19,10 @@ package com.tencent.angel.ml.matrix;
 import com.tencent.angel.conf.MatrixConf;
 import com.tencent.angel.model.output.format.ModelFilesConstent;
 import com.tencent.angel.model.output.format.ModelFilesMeta;
+import com.tencent.angel.model.output.format.ModelPartitionMeta;
+import com.tencent.angel.protobuf.ProtobufUtil;
+import com.tencent.angel.protobuf.generated.MLProtos;
+import com.tencent.angel.protobuf.generated.MLProtos.RowType;
 import com.tencent.angel.ps.LongKeyPartitioner;
 import com.tencent.angel.ps.PSPartitioner;
 import com.tencent.angel.ps.Partitioner;
@@ -26,18 +30,24 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * MatrixContext is used for user to set Matrix information.
  */
 public class MatrixContext {
   private final static Log LOG = LogFactory.getLog(MatrixContext.class);
+
+  private final static AtomicInteger idGenerator = new AtomicInteger(0);
 
   /** Matrix readable name */
   private String name;
@@ -55,10 +65,13 @@ public class MatrixContext {
   private long maxColNumInBlock;
 
   /** Partitioner for this matrix  */
-  private Class<? extends Partitioner> partitionerClass;
+  private Partitioner partitioner;
 
   /** Row type */
-  private RowType rowType;
+  private MLProtos.RowType rowType;
+
+  /** HDFS path for this matrix, if this is set, ps will load matrix from this path before training. */
+  private String path;
 
   /** Others key value attributes for this matrix. */
   private Map<String, String> attributes;
@@ -67,50 +80,23 @@ public class MatrixContext {
   private int matrixId;
 
   /**
-   * Creates a new MatrixContext by default.
+   * Creates a new Matrix context by default.
    */
   public MatrixContext() {
-    this("", -1, -1, -1, -1, RowType.T_DOUBLE_DENSE);
+    this("", -1, -1, -1, -1);
   }
 
-  /**
-   * Create a new MatrixContext
-   * @param name matrix name
-   * @param rowNum matrix row number
-   * @param colNum matrix column number
-   */
   public MatrixContext(String name, int rowNum, long colNum) {
-    this(name, rowNum, colNum, -1, -1, RowType.T_DOUBLE_DENSE);
+    this(name, rowNum, colNum, -1, -1);
   }
 
-  /**
-   * Create a new MatrixContext
-   * @param name matrix name
-   * @param rowNum matrix row number
-   * @param colNum matrix column number
-   * @param maxRowNumInBlock matrix block row number
-   * @param maxColNumInBlock matrix block column number
-   */
   public MatrixContext(String name, int rowNum, long colNum, int maxRowNumInBlock, long maxColNumInBlock) {
-    this(name, rowNum, colNum, maxRowNumInBlock, maxColNumInBlock, RowType.T_DOUBLE_DENSE);
-  }
-
-  /**
-   * Create a new MatrixContext
-   * @param name matrix name
-   * @param rowNum matrix row number
-   * @param colNum matrix column number
-   * @param maxRowNumInBlock matrix block row number
-   * @param maxColNumInBlock matrix block column number
-   * @param rowType matrix row type
-   */
-  public MatrixContext(String name, int rowNum, long colNum, int maxRowNumInBlock, long maxColNumInBlock, RowType rowType) {
     this.name = name;
     this.rowNum = rowNum;
     this.colNum = colNum;
     this.maxRowNumInBlock = maxRowNumInBlock;
     this.maxColNumInBlock = maxColNumInBlock;
-    this.rowType = rowType;
+    this.rowType = MLProtos.RowType.T_DOUBLE_DENSE;
     this.attributes = new HashMap<>();
     this.matrixId = -1;
   }
@@ -165,8 +151,8 @@ public class MatrixContext {
    *
    * @return the partitioner
    */
-  public Class<? extends Partitioner> getPartitionerClass() {
-    return partitionerClass;
+  public Partitioner getPartitioner() {
+    return partitioner;
   }
 
   /**
@@ -174,7 +160,7 @@ public class MatrixContext {
    *
    * @return the row type
    */
-  public RowType getRowType() {
+  public MLProtos.RowType getRowType() {
     return rowType;
   }
 
@@ -185,14 +171,6 @@ public class MatrixContext {
    */
   public Map<String, String> getAttributes() {
     return attributes;
-  }
-
-  /**
-   * Set matrix id
-   * @param matrixId
-   */
-  public void setMatrixId(int matrixId) {
-    this.matrixId = matrixId;
   }
 
   /**
@@ -218,7 +196,7 @@ public class MatrixContext {
    *
    * @param colNum the col num
    */
-  public void setColNum(long colNum) {
+  public void setColNum(int colNum) {
     this.colNum = colNum;
   }
 
@@ -236,17 +214,17 @@ public class MatrixContext {
    *
    * @param maxColNumInBlock the max col num in block
    */
-  public void setMaxColNumInBlock(long maxColNumInBlock) {
+  public void setMaxColNumInBlock(int maxColNumInBlock) {
     this.maxColNumInBlock = maxColNumInBlock;
   }
 
   /**
    * Sets partitioner.
    *
-   * @param partitionerClass the partitioner class
+   * @param partitioner the partitioner
    */
-  public void setPartitionerClass(Class<? extends Partitioner> partitionerClass) {
-    this.partitionerClass = partitionerClass;
+  public void setPartitioner(Partitioner partitioner) {
+    this.partitioner = partitioner;
   }
 
   /**
@@ -254,7 +232,7 @@ public class MatrixContext {
    *
    * @param rowType the row type
    */
-  public void setRowType(RowType rowType) {
+  public void setRowType(MLProtos.RowType rowType) {
     this.rowType = rowType;
   }
 
@@ -278,16 +256,57 @@ public class MatrixContext {
     return this;
   }
 
-  private void initPartitioner() {
-    if(partitionerClass != null) {
-      return;
+  /**
+   * Build mat proto ml protos . matrix proto.
+   *
+   * @param conf the conf
+   * @return the ml protos . matrix proto
+   * @throws IOException the io exception
+   */
+  public MLProtos.MatrixProto buildMatProto(Configuration conf) throws IOException {
+    matrixId = idGenerator.incrementAndGet();
+    String loadPath = attributes.get(MatrixConf.MATRIX_LOAD_PATH);
+    if(partitioner == null) {
+      initPartitioner();
+    }
+    partitioner.init(this, conf);
+    List<MLProtos.Partition> partitions;
+    if (loadPath != null) {
+      partitions = loadPartitionInfoFromHDFS(loadPath, conf);
+    } else {
+      partitions = partitioner.getPartitions();
     }
 
-    if(rowType == RowType.T_DOUBLE_SPARSE_LONGKEY) {
-      partitionerClass = LongKeyPartitioner.class;
-    } else {
-      partitionerClass = PSPartitioner.class;
+    String errorInfo = checkMatrixParams();
+    if (!errorInfo.isEmpty()) {
+      LOG.error("build matrix failed:" + errorInfo);
+      throw new IOException("matrix parameters are not valid:" + errorInfo);
     }
+
+    if(partitions == null || partitions.isEmpty()) {
+      throw new IOException("matrix partitions are not valid.");
+    }
+
+    return ProtobufUtil.generateMatrixProto(this, partitions);
+  }
+
+  private void initPartitioner() {
+    if(rowType == RowType.T_DOUBLE_SPARSE_LONGKEY) {
+      partitioner = new LongKeyPartitioner();
+    } else {
+      partitioner = new PSPartitioner();
+    }
+  }
+
+  /**
+   * Gets part id from path.
+   *
+   * @param path the path
+   * @return the part id from path
+   */
+  private int getPartIdFromPath(String path) {
+    String[] parts = path.split("/");
+    return Integer.parseInt(parts[parts.length - 1]);
   }
 
   private String checkMatrixParams() {
@@ -318,33 +337,21 @@ public class MatrixContext {
     return sb.toString();
   }
 
-  /**
-   * Get matrix id
-   * @return matrix id
-   */
-  public int getMatrixId() {
-    return matrixId;
-  }
 
   /**
-   * Init matrix
-   * @param conf
-   * @throws IOException
+   * Load matrix proto from hdfs.
+   *
+   * @param path the path
+   * @param conf the conf
+   * @return matrix partitions
+   * @throws IOException the io exception
    */
-  public void init(Configuration conf) throws IOException {
-    initPartitioner();
-    String loadPath = attributes.get(MatrixConf.MATRIX_LOAD_PATH);
-    if(loadPath != null) {
-      loadMatrixMetaFromFile(name, loadPath, conf);
-    }
-  }
-
-  private void loadMatrixMetaFromFile(String name, String path, Configuration conf) throws IOException {
+  private List<MLProtos.Partition> loadPartitionInfoFromHDFS(String path, Configuration conf) throws IOException {
     Path meteFilePath = new Path(new Path(path, name), ModelFilesConstent.modelMetaFileName);
     ModelFilesMeta meta = new ModelFilesMeta();
 
     FileSystem fs  = meteFilePath.getFileSystem(conf);
-    LOG.info("Load matrix meta for matrix " + name + " from " + path);
+    LOG.info("Load matrix meta for matrix " + name);
 
     if(!fs.exists(meteFilePath)) {
       throw new IOException("matrix meta file does not exist ");
@@ -352,8 +359,8 @@ public class MatrixContext {
 
     FSDataInputStream input = fs.open(meteFilePath);
     meta.read(input);
-    input.close();
 
+    LOG.info("matrix " + name + " meta=" + meta);
     rowNum = meta.getRow();
     colNum = meta.getCol();
     maxRowNumInBlock = meta.getBlockRow();
@@ -365,12 +372,23 @@ public class MatrixContext {
         attributes.putIfAbsent(kv.getKey(), kv.getValue());
       }
     }
+
+    List<MLProtos.Partition> matrixPartitions = new ArrayList<>();
+    Map<Integer, ModelPartitionMeta> partMetas = meta.getPartMetas();
+    for(Map.Entry<Integer, ModelPartitionMeta> partMetaEntry:partMetas.entrySet()) {
+      MLProtos.Partition.Builder partBuilder = MLProtos.Partition.newBuilder();
+      partBuilder.setMatrixId(matrixId);
+      partBuilder.setPartitionId(partMetaEntry.getKey());
+      partBuilder.setStartRow(partMetaEntry.getValue().getStartRow());
+      partBuilder.setStartCol(partMetaEntry.getValue().getStartCol());
+      partBuilder.setEndRow(partMetaEntry.getValue().getEndRow());
+      partBuilder.setEndCol(partMetaEntry.getValue().getEndCol());
+      matrixPartitions.add(partBuilder.build());
+    }
+    return matrixPartitions;
   }
 
-  @Override public String toString() {
-    return "MatrixContext{" + "name='" + name + '\'' + ", rowNum=" + rowNum + ", colNum=" + colNum
-      + ", maxRowNumInBlock=" + maxRowNumInBlock + ", maxColNumInBlock=" + maxColNumInBlock
-      + ", partitionerClass=" + partitionerClass + ", rowType=" + rowType + ", attributes="
-      + attributes + ", matrixId=" + matrixId + '}';
+  public int getId() {
+    return matrixId;
   }
 }

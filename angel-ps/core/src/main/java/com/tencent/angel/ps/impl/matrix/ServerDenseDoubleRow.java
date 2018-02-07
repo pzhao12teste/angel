@@ -16,7 +16,7 @@
 
 package com.tencent.angel.ps.impl.matrix;
 
-import com.tencent.angel.ml.matrix.RowType;
+import com.tencent.angel.protobuf.generated.MLProtos;
 import io.netty.buffer.ByteBuf;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -26,12 +26,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
-import java.util.Arrays;
 
 /**
  * The class represent dense double row on parameter server.
  */
-public class ServerDenseDoubleRow extends ServerDoubleRow {
+public class ServerDenseDoubleRow extends ServerRow {
   private final static Log LOG = LogFactory.getLog(ServerDenseDoubleRow.class);
 
   /** Byte array */
@@ -78,8 +77,8 @@ public class ServerDenseDoubleRow extends ServerDoubleRow {
   }
   
   @Override
-  public RowType getRowType() {
-    return RowType.T_DOUBLE_DENSE;
+  public MLProtos.RowType getRowType() {
+    return MLProtos.RowType.T_DOUBLE_DENSE;
   }
 
   @Override
@@ -88,7 +87,7 @@ public class ServerDenseDoubleRow extends ServerDoubleRow {
   }
 
   @Override
-  public void update(RowType rowType, ByteBuf buf, int size) {
+  public void update(MLProtos.RowType rowType, ByteBuf buf, int size) {
     try {
       lock.writeLock().lock();
       switch (rowType) {
@@ -119,8 +118,8 @@ public class ServerDenseDoubleRow extends ServerDoubleRow {
   }
 
   private void sparseDoubleUpdate(ByteBuf buf, int size) {
-    int columnId;
-    double value;
+    int columnId = 0;
+    double value = 0;
     int startColInt = (int) startCol;
     for (int i = 0; i < size; i++) {
       columnId = buf.readInt() - startColInt;
@@ -207,15 +206,6 @@ public class ServerDenseDoubleRow extends ServerDoubleRow {
     return super.bufferLen() + 4 + dataBuffer.length;
   }
 
-  @Override public void reset() {
-    try {
-      lock.writeLock().lock();
-      Arrays.fill(dataBuffer, (byte) 0);
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
   /**
    * Merge this dense double vector split to a double array
    * @param dataArray  double array for merge
@@ -224,7 +214,7 @@ public class ServerDenseDoubleRow extends ServerDoubleRow {
     try {
       lock.readLock().lock();
       // data.rewind();
-      int size = (int) (endCol - startCol);
+      int size = (int)(endCol - startCol);
       int startPos = (int) startCol;
       for (int i = 0; i < size; i++) {
         dataArray[startPos + i] = data.get(i);
@@ -232,9 +222,5 @@ public class ServerDenseDoubleRow extends ServerDoubleRow {
     } finally {
       lock.readLock().unlock();
     }
-  }
-
-  @Override protected double getValue(int index) {
-    return data.get(index - (int) startCol);
   }
 }

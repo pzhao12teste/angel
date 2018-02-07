@@ -40,15 +40,16 @@ public class PutPartitionUpdateRequest extends PartitionRequest {
   /**
    * Create PutPartitionUpdateRequest.
    *
+   * @param serverId parameter server id
    * @param taskIndex task index
    * @param clock clock value
    * @param partKey matrix partition key
    * @param rowsSplit update row splits
    * @param updateClock true means update the clock value of the matrix partition
    */
-  public PutPartitionUpdateRequest(int taskIndex, int clock,
+  public PutPartitionUpdateRequest(ParameterServerId serverId, int taskIndex, int clock,
       PartitionKey partKey, List<RowUpdateSplit> rowsSplit, boolean updateClock) {
-    super(clock, partKey);
+    super(serverId, clock, partKey);
     this.setTaskIndex(taskIndex);
     this.setRowsSplit(rowsSplit);
     this.setUpdateClock(updateClock);

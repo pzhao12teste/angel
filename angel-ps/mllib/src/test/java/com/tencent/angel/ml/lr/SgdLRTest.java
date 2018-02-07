@@ -20,7 +20,7 @@ package com.tencent.angel.ml.lr;
 import com.tencent.angel.conf.AngelConf;
 import com.tencent.angel.ml.classification.lr.LRRunner;
 import com.tencent.angel.ml.conf.MLConf;
-import com.tencent.angel.ml.matrix.RowType;
+import com.tencent.angel.protobuf.generated.MLProtos;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -50,7 +50,7 @@ public class SgdLRTest {
       // Feature number of train data
       int featureNum = 124;
       // Total iteration number
-      int epochNum = 5;
+      int epochNum = 20;
       // Validation sample Ratio
       double vRatio = 0.1;
       // Data format, libsvm or dummy
@@ -60,14 +60,14 @@ public class SgdLRTest {
       // Batch number
       int batchNum = 10;
       // Model type
-      String modelType = String.valueOf(RowType.T_DOUBLE_DENSE);
+      String modelType = String.valueOf(MLProtos.RowType.T_DOUBLE_SPARSE);
 
       // Learning rate
       double learnRate = 1.0;
       // Decay of learning rate
-      double decay = 1;
+      double decay = 0.1;
       // Regularization coefficient
-      double reg = 0.002;
+      double reg = 0.2;
 
       // Set local deploy mode
       conf.set(AngelConf.ANGEL_DEPLOY_MODE, "LOCAL");
@@ -77,7 +77,6 @@ public class SgdLRTest {
       conf.set(AngelConf.ANGEL_INPUTFORMAT_CLASS, CombineTextInputFormat.class.getName());
       conf.setBoolean(AngelConf.ANGEL_JOB_OUTPUT_PATH_DELETEONEXIST, true);
       conf.set(AngelConf.ANGEL_JOB_OUTPUT_PATH_DELETEONEXIST, "true");
-      conf.setBoolean(MLConf.ML_INDEX_GET_ENABLE(), true);
       // Set data format
       conf.set(MLConf.ML_DATA_FORMAT(), dataFmt);
 
@@ -132,7 +131,6 @@ public class SgdLRTest {
   }
 
   private void incTrainTest() throws Exception {
-    LOG.info("=====================================incTrainTest===================================");
     try{
       String inputPath = "./src/test/data/lr/a9a.train";
       String loadPath = LOCAL_FS + TMP_PATH + "/model";

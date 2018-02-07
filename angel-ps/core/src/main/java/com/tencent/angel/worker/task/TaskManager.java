@@ -207,8 +207,8 @@ public class TaskManager {
       Arrays.sort(indexArray);
 
       List<PartitionKey> partKeyList =
-          WorkerContext.get().getPSAgent().getMatrixMetaManager()
-              .getPartitions(meta.getId());
+          WorkerContext.get().getPSAgent().getMatrixPartitionRouter()
+              .getPartitionKeyList(meta.getId());
       Collections.sort(partKeyList);
       int partNum = partKeyList.size();
       int lastPos = 0;

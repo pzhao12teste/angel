@@ -41,27 +41,25 @@ class GBDTLearnerSuite extends PSFunSuite with SharedPSContext with Serializable
   override def beforeAll(): Unit = {
     super.beforeAll()
 
-    val dataSet = DataLoader.loadLibsvm(input, 2, 1.0, -1)
+    val dataset = DataLoader.loadLibsvm(input, 2, 1.0, -1)
       .map { case (label, feat) => Instance(label, feat, 1.0) }
 
-    val featureNum = dataSet.first().feature.size
+    val featureNum = dataset.first().feature.size
     param = new GBTreeParam()
     param.partitionNum = 2
     param.featureNum = featureNum
-    param.splitNum = 2
+    param.splitNum = 5
     param.featureSampleRate = 1.0
-    param.maxDepth = 5
-    param.maxTreeNum = 3
-    param.minChildWeight = 0.1
+    param.maxDepth = 4
+    param.maxTreeNum = 10
+    param.minChildWeight = 2
     param.learningRate = 0.3
-    param.validateFraction = 0.0
-    param.loss = new LeastSquareLoss
 
-    println(s"data set size: ${dataSet.count()}")
     println(s"feature num: ${param.featureNum}")
     learner = new GBDTLearner(param)
-    instances = learner.init(dataSet)._1
+    instances = learner.init(dataset)._1
     tree = learner.createNewTree(0, instances)
+
   }
 
   override def afterAll(): Unit = {
@@ -71,14 +69,10 @@ class GBDTLearnerSuite extends PSFunSuite with SharedPSContext with Serializable
   test("create sketch") {
     sketches = learner.createSketch(instances)
 
-    // fake sketch
-    sketches = Range(0, param.featureNum).toArray.map { i =>
-      Array(-0.5, 0.5)
-    }
-    println(s"sketch: \n${sketches.slice(0, 10).map(_.mkString(" ")).mkString("\n")}")
+    println(s"sketch: \n${sketches.map(_.mkString(" ")).mkString("\n")}")
 
-    instances.take(10).foreach { case (id, instance) =>
-      println(s"$id instance: ${instance.toString}")
+    instances.foreach { case (id, instance) =>
+      println(s"$id  instance: ${instance.toString}")
     }
   }
 
@@ -94,29 +88,26 @@ class GBDTLearnerSuite extends PSFunSuite with SharedPSContext with Serializable
   }
 
   test("calculate gradient") {
+
+    learner.param.loss = new LeastSquareLoss
+
     val predictions = instances.map { case (id, instance) => Tuple2(id, 0.0) }
 
     this.gradHessRDD = learner.calculateGradient(instances, predictions)
 
-    /**
     this.gradHessRDD.join(instances).collect()
       .foreach { case (id, ((grad, hess), instance)) =>
         assert(grad == 0.0 - instance.label)
         assert(hess == 1.0)
-      } */
+      }
   }
 
   test("build histogram") {
     learner.buildHistogram(tree, instances, gradHessRDD, sampleFeature, sampleSketch)
 
-    val positiveSampleNum = instances.map { case (index, instance) => instance.label }.sum()
-    val instanceNum = instances.count()
     tree.forActive { node =>
       val histogram = learner.gradHistMatrix.pull(node.id)
-      sampleFeature.value.indices.foreach { i =>
-        assert(histogram(i * 4 + 0) + histogram(i * 4 + 1) == -1 * positiveSampleNum)
-        assert(histogram(i * 4 + 2) + histogram(i * 4 + 3) == instanceNum)
-      }
+      println(s"histogram node ${node.id}: ${histogram.mkString(" ")}")
     }
   }
 
@@ -135,15 +126,34 @@ class GBDTLearnerSuite extends PSFunSuite with SharedPSContext with Serializable
   }
 
   test("grow tree") {
+    println(s"instance layout:")
+    val tempRDD = instances.mapPartitionsWithIndex { case (pId, iter) =>
+      println(s"partition $pId instance:")
+      println(s"${iter.map(x => "index:" + x._1 + " " + x._2.toString).mkString("\n")}")
+      Iterator.empty
+    }
+    tempRDD.count()
+
+    println(s"instance layout:")
+    instances.partitions.indices.foreach { pId =>
+      println(s"partition $pId position info: ${learner.instancePosInfoMat.pull(pId).mkString(" ")}")
+      println(s"partition $pId layout: ${learner.instanceLayoutMat.pull(pId).mkString(" ")}")
+    }
+
     learner.growTree(tree, instances)
+
+    println(s"instance layout:")
+    instances.partitions.indices.foreach { pId =>
+      println(s"partition $pId position info: ${learner.instancePosInfoMat.pull(pId).mkString(" ")}")
+      println(s"partition $pId layout: ${learner.instanceLayoutMat.pull(pId).mkString(" ")}")
+    }
+
     println(s"tree after grow: ${tree.toString}")
   }
 
-  /**
   test("train") {
-    param.loss = new LogisticLoss
     val gbtModel = learner.train(instances.map(_._2))
     println(s"gbt model ${gbtModel.toString}")
   }
-  */
+
 }

@@ -18,7 +18,6 @@
 package com.tencent.angel.psagent.matrix.oplog.cache;
 
 import com.tencent.angel.ml.math.vector.SparseDoubleVector;
-import com.tencent.angel.ml.matrix.RowType;
 import com.tencent.angel.protobuf.generated.MLProtos;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
@@ -38,7 +37,7 @@ public class CompSparseDoubleRowUpdateSplit extends RowUpdateSplit {
    * @param rowType  row type
    */
   public CompSparseDoubleRowUpdateSplit(SparseDoubleVector split, int rowIndex,
-                                        RowType rowType) {
+                                        MLProtos.RowType rowType) {
     super(rowIndex, rowType, -1, -1);
     this.split = split;
   }
@@ -62,6 +61,6 @@ public class CompSparseDoubleRowUpdateSplit extends RowUpdateSplit {
   }
 
   @Override public int bufferLen() {
-    return super.bufferLen() + 4 + split.size() * 12;
+    return super.bufferLen() + split.size() * 12;
   }
 }

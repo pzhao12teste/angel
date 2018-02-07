@@ -19,7 +19,7 @@ package com.tencent.angel.master;
 import com.tencent.angel.PartitionKey;
 import com.tencent.angel.client.AngelClient;
 import com.tencent.angel.client.AngelClientFactory;
-import com.tencent.angel.common.location.Location;
+import com.tencent.angel.common.Location;
 import com.tencent.angel.conf.AngelConf;
 import com.tencent.angel.conf.MatrixConf;
 import com.tencent.angel.ipc.TConnection;
@@ -29,9 +29,6 @@ import com.tencent.angel.master.app.AppState;
 import com.tencent.angel.master.app.InternalErrorEvent;
 import com.tencent.angel.master.ps.ParameterServerManager;
 import com.tencent.angel.ml.matrix.MatrixContext;
-import com.tencent.angel.ml.matrix.RowType;
-import com.tencent.angel.ps.impl.ClockVectorManager;
-import com.tencent.angel.ps.impl.MatrixStorageManager;
 import com.tencent.angel.worker.task.TaskContext;
 import com.tencent.angel.protobuf.ProtobufUtil;
 import com.tencent.angel.protobuf.generated.MLProtos;
@@ -40,6 +37,7 @@ import com.tencent.angel.protobuf.generated.PSAgentMasterServiceProtos.TaskClock
 import com.tencent.angel.protobuf.generated.PSAgentMasterServiceProtos.TaskIterationRequest;
 import com.tencent.angel.ps.PSAttemptId;
 import com.tencent.angel.ps.ParameterServerId;
+import com.tencent.angel.ps.impl.MatrixPartitionManager;
 import com.tencent.angel.ps.impl.ParameterServer;
 import com.tencent.angel.ps.impl.matrix.ServerMatrix;
 import com.tencent.angel.worker.Worker;
@@ -112,25 +110,24 @@ public class MasterRecoverTest {
       mMatrix.setColNum(100000);
       mMatrix.setMaxRowNumInBlock(1);
       mMatrix.setMaxColNumInBlock(50000);
-      mMatrix.setRowType(RowType.T_INT_DENSE);
+      mMatrix.setRowType(MLProtos.RowType.T_INT_DENSE);
       mMatrix.set(MatrixConf.MATRIX_OPLOG_ENABLEFILTER, "false");
       mMatrix.set(MatrixConf.MATRIX_HOGWILD, "true");
       mMatrix.set(MatrixConf.MATRIX_AVERAGE, "false");
       mMatrix.set(MatrixConf.MATRIX_OPLOG_TYPE, "DENSE_INT");
       angelClient.addMatrix(mMatrix);
 
-      MatrixContext mMatrix2 = new MatrixContext();
-      mMatrix2.setName("w2");
-      mMatrix2.setRowNum(1);
-      mMatrix2.setColNum(100000);
-      mMatrix2.setMaxRowNumInBlock(1);
-      mMatrix2.setMaxColNumInBlock(50000);
-      mMatrix2.setRowType(RowType.T_DOUBLE_DENSE);
-      mMatrix2.set(MatrixConf.MATRIX_OPLOG_ENABLEFILTER, "false");
-      mMatrix2.set(MatrixConf.MATRIX_HOGWILD, "false");
-      mMatrix2.set(MatrixConf.MATRIX_AVERAGE, "false");
-      mMatrix2.set(MatrixConf.MATRIX_OPLOG_TYPE, "DENSE_DOUBLE");
-      angelClient.addMatrix(mMatrix2);
+      mMatrix.setName("w2");
+      mMatrix.setRowNum(1);
+      mMatrix.setColNum(100000);
+      mMatrix.setMaxRowNumInBlock(1);
+      mMatrix.setMaxColNumInBlock(50000);
+      mMatrix.setRowType(MLProtos.RowType.T_DOUBLE_DENSE);
+      mMatrix.set(MatrixConf.MATRIX_OPLOG_ENABLEFILTER, "false");
+      mMatrix.set(MatrixConf.MATRIX_HOGWILD, "false");
+      mMatrix.set(MatrixConf.MATRIX_AVERAGE, "false");
+      mMatrix.set(MatrixConf.MATRIX_OPLOG_TYPE, "DENSE_DOUBLE");
+      angelClient.addMatrix(mMatrix);
 
       angelClient.startPSServer();
       angelClient.run();
@@ -256,16 +253,14 @@ public class MasterRecoverTest {
       assertEquals(task0Context.getMatrixClock(w2Id), task0w2Clock);
       assertEquals(task1Context.getMatrixClock(w1Id), task1w1Clock);
       assertEquals(task1Context.getMatrixClock(w2Id), task1w2Clock);
-
-      LOG.info("===============worker.getPSAgent().getMatrixMetaManager().getMatrixMetas().size()="
-        + worker.getPSAgent().getMatrixMetaManager().getMatrixMetas().size());
-      assertTrue(worker.getPSAgent().getMatrixMetaManager().exist(w1Id));
-      assertTrue(worker.getPSAgent().getMatrixMetaManager().exist(w2Id));
-
-      assertEquals(worker.getPSAgent().getMatrixMetaManager().getPss(w1Part0Key).get(0), psId);
-      assertEquals(worker.getPSAgent().getMatrixMetaManager().getPss(w1Part1Key).get(0), psId);
-      assertEquals(worker.getPSAgent().getMatrixMetaManager().getPss(w2Part0Key).get(0), psId);
-      assertEquals(worker.getPSAgent().getMatrixMetaManager().getPss(w2Part1Key).get(0), psId);
+      Set<Integer> matrixSet = worker.getPSAgent().getMatrixMetaManager().getMatrixIds();
+      assertEquals(matrixSet.size(), 2);
+      assertTrue(matrixSet.contains(w1Id));
+      assertTrue(matrixSet.contains(w2Id));
+      assertEquals(worker.getPSAgent().getMatrixPartitionRouter().getPSId(w1Part0Key), psId);
+      assertEquals(worker.getPSAgent().getMatrixPartitionRouter().getPSId(w1Part1Key), psId);
+      assertEquals(worker.getPSAgent().getMatrixPartitionRouter().getPSId(w2Part0Key), psId);
+      assertEquals(worker.getPSAgent().getMatrixPartitionRouter().getPSId(w2Part1Key), psId);
 
       ps = LocalClusterContext.get().getPS(psAttempt0Id).getPS();
       checkMatrixInfo(ps, w1Id, w2Id, w1Clock, w2Clock);
@@ -287,22 +282,19 @@ public class MasterRecoverTest {
   }
 
   private void checkMatrixInfo(ParameterServer ps, int w1Id, int w2Id, int w1Clock, int w2Clock) {
-    MatrixStorageManager matrixPartManager = ps.getMatrixStorageManager();
-    ClockVectorManager clockVectorManager = ps.getClockVectorManager();
-    ConcurrentHashMap<Integer, ServerMatrix> matrixIdMap = matrixPartManager.getMatrices();
+    MatrixPartitionManager matrixPartManager = ps.getMatrixPartitionManager();
+    ConcurrentHashMap<Integer, ServerMatrix> matrixIdMap = matrixPartManager.getMatrixIdMap();
     ServerMatrix sw1 = matrixIdMap.get(w1Id);
     ServerMatrix sw2 = matrixIdMap.get(w2Id);
     assertTrue(sw1 != null);
     assertTrue(sw2 != null);
-    LOG.info("======================partition key is " + sw1.getPartition(0).getPartitionKey());
-    LOG.info("======================partition key is " + sw1.getPartition(1).getPartitionKey());
     assertEquals(sw1.getPartition(0).getPartitionKey().getStartRow(), 0);
     assertEquals(sw1.getPartition(0).getPartitionKey().getEndRow(), 1);
     assertEquals(sw1.getPartition(0).getPartitionKey().getStartCol(), 0);
     assertEquals(sw1.getPartition(0).getPartitionKey().getEndCol(), 50000);
     assertEquals(sw1.getPartition(0).getPartitionKey().getMatrixId(), w1Id);
     assertEquals(sw1.getPartition(0).getPartitionKey().getPartitionId(), 0);
-    assertEquals(clockVectorManager.getPartClock(sw1.getId(), 0), w1Clock);
+    assertEquals(sw1.getPartition(0).getClock(), w1Clock);
 
     assertEquals(sw1.getPartition(1).getPartitionKey().getStartRow(), 0);
     assertEquals(sw1.getPartition(1).getPartitionKey().getEndRow(), 1);
@@ -310,7 +302,7 @@ public class MasterRecoverTest {
     assertEquals(sw1.getPartition(1).getPartitionKey().getEndCol(), 100000);
     assertEquals(sw1.getPartition(1).getPartitionKey().getMatrixId(), w1Id);
     assertEquals(sw1.getPartition(1).getPartitionKey().getPartitionId(), 1);
-    assertEquals(clockVectorManager.getPartClock(sw1.getId(), 1), w1Clock);
+    assertEquals(sw1.getPartition(1).getClock(), w1Clock);
 
     assertEquals(sw2.getPartition(0).getPartitionKey().getStartRow(), 0);
     assertEquals(sw2.getPartition(0).getPartitionKey().getEndRow(), 1);
@@ -318,7 +310,7 @@ public class MasterRecoverTest {
     assertEquals(sw2.getPartition(0).getPartitionKey().getEndCol(), 50000);
     assertEquals(sw2.getPartition(0).getPartitionKey().getMatrixId(), w2Id);
     assertEquals(sw2.getPartition(0).getPartitionKey().getPartitionId(), 0);
-    assertEquals(clockVectorManager.getPartClock(sw2.getId(), 0), w2Clock);
+    assertEquals(sw2.getPartition(0).getClock(), w2Clock);
 
     assertEquals(sw2.getPartition(1).getPartitionKey().getStartRow(), 0);
     assertEquals(sw2.getPartition(1).getPartitionKey().getEndRow(), 1);
@@ -326,7 +318,7 @@ public class MasterRecoverTest {
     assertEquals(sw2.getPartition(1).getPartitionKey().getEndCol(), 100000);
     assertEquals(sw2.getPartition(1).getPartitionKey().getMatrixId(), w2Id);
     assertEquals(sw2.getPartition(1).getPartitionKey().getPartitionId(), 1);
-    assertEquals(clockVectorManager.getPartClock(sw2.getId(), 1), w2Clock);
+    assertEquals(sw2.getPartition(1).getClock(), w2Clock);
   }
 
   @After

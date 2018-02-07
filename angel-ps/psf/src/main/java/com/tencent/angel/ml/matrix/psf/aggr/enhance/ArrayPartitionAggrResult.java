@@ -25,40 +25,19 @@ import io.netty.buffer.ByteBuf;
  * `ArrayPartitionAggrResult` is a result Class for all Aggregate function whose result is double[]
  */
 public class ArrayPartitionAggrResult extends PartitionGetResult {
-  private long[] cols;
-  private double[] result;
-
-  public ArrayPartitionAggrResult(long[] cols, double[] result) {
-    this.cols = cols;
-    this.result = result;
-  }
-
+  public double[] result;
 
   public ArrayPartitionAggrResult(double[] result) {
     this.result = result;
-    this.cols = new long[]{};
   }
 
   public ArrayPartitionAggrResult() {}
-
-  public long[] getCols() {
-    return cols;
-  }
-
-  public double[] getResult() {
-    return result;
-  }
 
   @Override
   public void serialize(ByteBuf buf) {
     buf.writeInt(result.length);
     for (int i = 0; i < result.length; i++) {
       buf.writeDouble(result[i]);
-    }
-
-    buf.writeInt(cols.length);
-    for (int i = 0; i < result.length; i++) {
-      buf.writeLong(cols[i]);
     }
   }
 
@@ -69,16 +48,10 @@ public class ArrayPartitionAggrResult extends PartitionGetResult {
     for (int i = 0; i < resultSize; i++) {
       result[i] = buf.readDouble();
     }
-
-    int colSize = buf.readInt();
-    cols = new long[colSize];
-    for (int i = 0; i < colSize; i++) {
-      cols[i] = buf.readLong();
-    }
   }
 
   @Override
   public int bufferLen() {
-    return 4 + result.length * 8 + cols.length * 8;
+    return 4 + result.length * 8;
   }
 }

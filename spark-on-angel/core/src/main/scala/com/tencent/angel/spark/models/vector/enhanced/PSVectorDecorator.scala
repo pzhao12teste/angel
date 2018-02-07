@@ -17,7 +17,7 @@
 
 package com.tencent.angel.spark.models.vector.enhanced
 
-import com.tencent.angel.spark.models.vector.{ConcretePSVector, PSVector}
+import com.tencent.angel.spark.models.vector.PSVector
 
-abstract class PSVectorDecorator(val component: ConcretePSVector) extends PSVector {
+abstract class PSVectorDecorator(val component: PSVector) extends PSVector{
 }

@@ -18,8 +18,6 @@
 package com.tencent.angel.ml.classification.lr
 
 import com.tencent.angel.ml.MLRunner
-import com.tencent.angel.ml.conf.MLConf
-import com.tencent.angel.ml.matrix.RowType
 import org.apache.commons.logging.LogFactory
 import org.apache.hadoop.conf.Configuration
 
@@ -37,16 +35,8 @@ class LRRunner extends MLRunner {
     */
   override
   def train(conf: Configuration): Unit = {
-    val modelType = RowType.valueOf(conf.get(MLConf.LR_MODEL_TYPE, RowType.T_DOUBLE_SPARSE.toString))
-    LOG.info("model type=" + modelType)
-    modelType match {
-      case RowType.T_DOUBLE_SPARSE_LONGKEY | RowType.T_DOUBLE_SPARSE_LONGKEY_COMPONENT => {
-        train(conf, LRModel(conf), classOf[LRTrain64Task])
-      }
-      case _ => {
-        train(conf, LRModel(conf), classOf[LRTrainTask])
-      }
-    }
+    conf.setInt("angel.worker.matrixtransfer.request.timeout.ms", 60000)
+    train(conf, LRModel(conf), classOf[LRTrainTask])
   }
   
   /*
@@ -55,6 +45,7 @@ class LRRunner extends MLRunner {
    */
   override
   def predict(conf: Configuration): Unit = {
+    conf.setInt("angel.worker.matrix.transfer.request.timeout.ms", 60000)
     super.predict(conf, LRModel(conf), classOf[LRPredictTask])
   }
   
@@ -63,14 +54,7 @@ class LRRunner extends MLRunner {
    * @param conf: configuration of algorithm and resource
    */
   def incTrain(conf: Configuration): Unit = {
-    val modelType = RowType.valueOf(conf.get(MLConf.LR_MODEL_TYPE, RowType.T_DOUBLE_SPARSE.toString))
-    modelType match {
-      case RowType.T_DOUBLE_SPARSE_LONGKEY | RowType.T_DOUBLE_SPARSE_LONGKEY_COMPONENT => {
-        train(conf, LRModel(conf), classOf[LRTrain64Task])
-      }
-      case _ => {
-        train(conf, LRModel(conf), classOf[LRTrainTask])
-      }
-    }
+    conf.setInt("angel.worker.matrix.transfer.request.timeout.ms", 60000)
+    super.train(conf, LRModel(conf), classOf[LRTrainTask])
   }
 }
