@@ -740,7 +740,7 @@ abstract class CompDoubleVector extends TIntDoubleVector {
   }
 
   @Override public double sparsity() {
-    return nonZeroNumber() / getDimension();
+    return (double)nonZeroNumber() / (double)getDimension();
   }
 
   @Override public int size() {
@@ -779,6 +779,7 @@ abstract class CompDoubleVector extends TIntDoubleVector {
     ElementUpdateOp
       op = new ElementUpdateOp(vectors, 0, splitNum, updater, param);
     MatrixOpExecutors.execute(op);
+    op.join();
     return this;
   }
 }
