@@ -34,6 +34,8 @@ class MLRRunner extends MLRunner {
     */
   override
   def train(conf: Configuration): Unit = {
+    conf.setInt("angel.worker.matrixtransfer.request.timeout.ms", 60000)
+
     train(conf, MLRModel(conf), classOf[MLRTrainTask])
   }
 
@@ -43,6 +45,7 @@ class MLRRunner extends MLRunner {
    */
   override
   def predict(conf: Configuration): Unit = {
+    conf.setInt("angel.worker.matrix.transfer.request.timeout.ms", 60000)
     super.predict(conf, MLRModel(conf), classOf[MLRPredictTask])
   }
 
@@ -51,6 +54,7 @@ class MLRRunner extends MLRunner {
    * @param conf: configuration of algorithm and resource
    */
   def incTrain(conf: Configuration): Unit = {
+    conf.setInt("angel.worker.matrix.transfer.request.timeout.ms", 60000)
     super.train(conf, MLRModel(conf), classOf[MLRTrainTask])
   }
 }

@@ -45,16 +45,14 @@ public class MatrixTransportServer {
   private EventLoopGroup workerGroup;
   private ChannelFuture channelFuture;
   private final AtomicBoolean stopped;
-  private final PSContext context;
 
-  public MatrixTransportServer(int port, PSContext context) {
+  public MatrixTransportServer(int port) {
     this.port = port;
-    this.context = context;
     this.stopped = new AtomicBoolean(false);
   }
 
   public void start() {
-    Configuration conf = context.getConf();
+    Configuration conf = PSContext.get().getConf();
     int workerNum =
         conf.getInt(AngelConf.ANGEL_NETTY_MATRIXTRANSFER_SERVER_EVENTGROUP_THREADNUM,
             AngelConf.DEFAULT_ANGEL_NETTY_MATRIXTRANSFER_SERVER_EVENTGROUP_THREADNUM);
@@ -85,7 +83,7 @@ public class MatrixTransportServer {
             ChannelPipeline p = ch.pipeline();
             p.addLast(new LengthFieldBasedFrameDecoder(maxMessageSize, 0, 4, 0, 4));
             p.addLast(new LengthFieldPrepender(4));
-            p.addLast(new MatrixTransportServerHandler(context));
+            p.addLast(new MatrixTransportServerHandler());
           }
         });
 

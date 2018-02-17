@@ -70,18 +70,10 @@ public class GetPartitionResponse extends Response {
     return super.bufferLen() + (partition != null ? partition.bufferLen() : 0);
   }
 
-  /**
-   * Get partition
-   * @return partition
-   */
   public ServerPartition getPartition() {
     return partition;
   }
 
-  /**
-   * Set partitoin
-   * @param partition partition
-   */
   public void setPartition(ServerPartition partition) {
     this.partition = partition;
   }

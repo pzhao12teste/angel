@@ -22,9 +22,8 @@ import org.apache.spark.rdd.RDD
 import org.scalatest.Matchers
 
 import com.tencent.angel.spark.context.PSContext
-import com.tencent.angel.spark.linalg.{DenseVector, SparseVector}
 import com.tencent.angel.spark.models.vector.{DensePSVector, PSVector}
-import com.tencent.angel.spark.{PSFunSuite, SharedPSContext, Utils}
+import com.tencent.angel.spark.{PSFunSuite, SharedPSContext}
 
 class CachedPSVectorSuite extends PSFunSuite with Matchers with SharedPSContext with Serializable {
 
@@ -77,14 +76,15 @@ class CachedPSVectorSuite extends PSFunSuite with Matchers with SharedPSContext 
     val remoteVector = PSVector.duplicate(_psVector).toCache
     val rdd2 = _rdd.mapPartitions { iter =>
       iter.foreach { arr =>
-        remoteVector.incrementWithCache(new DenseVector(arr))
+        remoteVector.incrementWithCache(arr)
       }
       Iterator.empty
     }
     rdd2.count()
     remoteVector.flushIncrement()
 
-    val psArray = remoteVector.pull
+    val psArray = remoteVector.pull()
+    println(s"ps array: ${psArray.mkString(" ")}")
     _localSum.indices.foreach { i => assert(_localSum(i) === psArray(i) +- doubleEps) }
   }
 
@@ -92,14 +92,14 @@ class CachedPSVectorSuite extends PSFunSuite with Matchers with SharedPSContext 
     val remoteVector = PSVector.duplicate(_psVector).toCache
     val rdd2 = _rdd.mapPartitions { iter =>
       iter.foreach { arr =>
-        remoteVector.incrementWithCache(new DenseVector(arr))
+        remoteVector.incrementWithCache(arr)
       }
       Iterator.empty
     }
     rdd2.count()
     remoteVector.flushIncrement()
 
-    val psArray = remoteVector.pull
+    val psArray = remoteVector.pull()
     _localSum.indices.foreach { i => assert(_localSum(i) === psArray(i) +- doubleEps) }
   }
 
@@ -109,12 +109,12 @@ class CachedPSVectorSuite extends PSFunSuite with Matchers with SharedPSContext 
       val sum = iter.reduce { (arr1: Array[Double], arr2: Array[Double]) =>
         arr1.indices.toArray.map (i => arr1(i) + arr2(i))
       }
-      remoteVector.increment(new DenseVector(sum))
+      remoteVector.increment(sum)
       Iterator.empty
     }
     rdd2.count()
 
-    val psArray = remoteVector.pull
+    val psArray = remoteVector.pull()
     _localSum.indices.foreach { i => assert(_localSum(i) === psArray(i) +- doubleEps) }
   }
 
@@ -127,8 +127,9 @@ class CachedPSVectorSuite extends PSFunSuite with Matchers with SharedPSContext 
       Iterator.empty
     }
     rdd2.count()
-    Utils.assertSameElement(remoteVector.pull, _localMax)
+    assert(remoteVector.pull().sameElements(_localMax))
   }
+
 
   test("mergeMaxAndFlush") {
     val remoteVector = PSVector.duplicate(_psVector).fill(Double.NegativeInfinity).toCache
@@ -139,12 +140,12 @@ class CachedPSVectorSuite extends PSFunSuite with Matchers with SharedPSContext 
       iter.foreach { arr =>
         arr.indices.foreach { i => if (arr(i) >  max(i)) max(i) = arr(i) }
       }
-      remoteVector.mergeMax(new DenseVector(max))
+      remoteVector.mergeMax(max)
       Iterator.empty
     }
     rdd2.count()
 
-    Utils.assertSameElement(remoteVector.pull, _localMax)
+    assert(remoteVector.pullFromCache().sameElements(_localMax))
   }
 
   test("mergeMin dense vector") {
@@ -157,7 +158,7 @@ class CachedPSVectorSuite extends PSFunSuite with Matchers with SharedPSContext 
     }
     rdd2.count()
 
-    Utils.assertSameElement(remoteVector.pull, _localMin)
+    assert(remoteVector.pullFromCache().sameElements(_localMin))
   }
 
   test("mergeMinAndFlush") {
@@ -169,12 +170,12 @@ class CachedPSVectorSuite extends PSFunSuite with Matchers with SharedPSContext 
       iter.foreach { arr =>
         arr.indices.foreach { i => if (arr(i) <  min(i)) min(i) = arr(i) }
       }
-      remoteVector.mergeMin(new DenseVector(min))
+      remoteVector.mergeMin(min)
       Iterator.empty
     }
     rdd2.count()
 
-    Utils.assertSameElement(remoteVector.pull, _localMin)
+    assert(remoteVector.pullFromCache().sameElements(_localMin))
   }
 
   test("PullFromCache") {
@@ -182,7 +183,7 @@ class CachedPSVectorSuite extends PSFunSuite with Matchers with SharedPSContext 
     val remoteVector = PSVector.duplicate(_psVector).toCache
     val rand = new Random()
     val localArray = (0 until dim).toArray.map(x => rand.nextDouble())
-    remoteVector.increment(new DenseVector(localArray))
+    remoteVector.push(localArray)
 
     val temp = _rdd.mapPartitions { iter =>
       val list = iter.toArray.map(x => remoteVector.pullFromCache())
@@ -194,27 +195,7 @@ class CachedPSVectorSuite extends PSFunSuite with Matchers with SharedPSContext 
       Iterator.empty
     }
     temp.count()
+
   }
 
-  test("increment sparse vector and flush") {
-    val sparseVec = PSVector.sparse(dim)
-
-    val rand = new Random()
-    val indices = (0 until dim / 2).toArray.map(x => rand.nextInt(dim).toLong).distinct
-    val values = indices.map(i => rand.nextDouble())
-    val nnz = indices.length
-
-    val sv1 = new SparseVector(dim, indices.slice(0, nnz / 2), values.slice(0, nnz / 2))
-    val sv2 = new SparseVector(dim, indices.slice(nnz / 4, nnz), values.slice(nnz / 4, nnz))
-
-    sparseVec.increment(sv1)
-    sparseVec.increment(sv2)
-
-    val localSparse = sparseVec.pull
-
-    indices.foreach { i =>
-      val localSum = sv1(i) + sv2(i)
-      assert(localSum == localSparse(i))
-    }
-  }
 }

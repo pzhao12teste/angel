@@ -43,12 +43,6 @@ public class ParameterServerService implements PSProtocol {
   //private final ParameterServer psServer;
   private RpcServer rpcServer;
 
-  private PSContext context;
-
-  public ParameterServerService(PSContext context) {
-    this.context = context;
-  }
-
   /**
    * Gets host address.
    *
@@ -74,7 +68,7 @@ public class ParameterServerService implements PSProtocol {
    * @throws IOException the io exception
    */
   public void start() throws IOException {
-    Configuration conf = context.getConf();
+    Configuration conf = PSContext.get().getConf();
     int psServerPort = NetUtils.chooseAListenPort(conf);
     String psServerHost = InetAddress.getLocalHost().getHostAddress();
     rpcServer =

@@ -86,7 +86,7 @@ public class AngelLocalClient extends AngelClient {
       try {
         LOG.info("start to create rpc client to am");
         master = connection.getMasterService(masterLocation.getIp(), masterLocation.getPort());
-        startHeartbeat();
+        master.ping(null, PingRequest.newBuilder().build());
         break;
       } catch (ServiceException e) {
         Thread.sleep(1000);
@@ -97,7 +97,6 @@ public class AngelLocalClient extends AngelClient {
 
   @Override
   public void stop() throws AngelException{
-    super.stop();
     if(cluster != null) {
       cluster.stop();
     }

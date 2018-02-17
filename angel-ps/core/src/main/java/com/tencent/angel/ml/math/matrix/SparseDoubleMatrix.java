@@ -23,8 +23,9 @@ import org.apache.commons.logging.LogFactory;
 /**
  * Sparse double matrix that is represented by a group of sparse double vector {@link SparseDoubleVector}
  */
-public class SparseDoubleMatrix extends TDoubleMatrix<SparseDoubleVector> {
+public class SparseDoubleMatrix extends TDoubleMatrix {
   private static final Log LOG = LogFactory.getLog(SparseDoubleMatrix.class);
+  private final SparseDoubleVector[] vectors;
 
   /**
    * Build a SparseDoubleMatrix
@@ -32,11 +33,8 @@ public class SparseDoubleMatrix extends TDoubleMatrix<SparseDoubleVector> {
    * @param col column number
    */
   public SparseDoubleMatrix(int row, int col) {
-    this(row, col, new SparseDoubleVector[row]);
-  }
-
-  public SparseDoubleMatrix(int row, int col, SparseDoubleVector[] vectors) {
-    super(row, col, vectors);
+    super(row, col);
+    vectors = new SparseDoubleVector[row];
   }
 
   /**

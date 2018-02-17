@@ -15,9 +15,14 @@
 
 __all__ = ['MLConf']
 
+import sys
+import re
 
 from pyangel.context import Configuration
 
+if sys.version > '3':
+    unicode = str
+    __doc__ = re.sub(r"(\W|^)[uU](['])", r'\1\2', __doc__)
 
 class MLParams(type):
     """
@@ -29,5 +34,5 @@ class MLParams(type):
         value = _jvm.com.tencent.angel.ml.utils.ReflectionUtils.getAttr(item)
         return str(value)
 
-class MLConf(metaclass=MLParams):
-    pass
+class MLConf:
+    __metaclass__ = MLParams

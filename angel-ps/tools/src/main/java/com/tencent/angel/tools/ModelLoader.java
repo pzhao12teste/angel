@@ -17,40 +17,35 @@
 
 package com.tencent.angel.tools;
 
-import com.google.common.base.Preconditions;
-import com.google.common.base.Predicate;
-import com.tencent.angel.model.output.format.ModelFilesConstent;
 import com.tencent.angel.model.output.format.ModelFilesMeta;
+import com.tencent.angel.model.output.format.ModelFilesConstent;
 import com.tencent.angel.model.output.format.ModelPartitionMeta;
-import com.tencent.angel.model.output.format.ModelPartitionMeta.RowOffset;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.RecursiveAction;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.PropertyConfigurator;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveAction;
 
 /**
  * Model load tools
  */
 public class ModelLoader {
-
   private static final Log LOG = LogFactory.getLog(ModelLoader.class);
   private static volatile int batchNum = 1;
   private final static ForkJoinPool pool =
-      new ForkJoinPool(Runtime.getRuntime().availableProcessors() * 2);
+    new ForkJoinPool(Runtime.getRuntime().availableProcessors() * 2);
   private final static int SPARSE_DOUBLE = 1;
   private final static int DENSE_DOUBLE = 2;
   private final static int SPARSE_INT = 3;
@@ -58,13 +53,13 @@ public class ModelLoader {
   private final static int DENSE_FLOAT = 6;
   private final static int SPARSE_FLOAT = 7;
   private final static int SPARSE_DOUBLE_LONGKEY = 8;
-
+  
   /**
    * Read model row type
    *
    * @param modelDir model save directory
-   * @return row type 0:sparse double, 1:dense double, 2:sparse int, 3:dense int, 4:dense float,
-   * 5:sparse float, 7:sparse long key double
+   * @return row type 0:sparse double, 1:dense double, 2:sparse int, 3:dense int, 4:dense float, 5:sparse float, 7:sparse long key double
+   * @throws IOException
    */
   public static int getModelFormat(String modelDir) throws IOException {
     Configuration conf = new Configuration();
@@ -90,7 +85,6 @@ public class ModelLoader {
    * Base class of model
    */
   static abstract class Model {
-
     /**
      * Row type
      */
@@ -110,8 +104,8 @@ public class ModelLoader {
      * Create a model
      *
      * @param rowType row type
-     * @param row row number
-     * @param col column number
+     * @param row     row number
+     * @param col     column number
      */
     public Model(int rowType, int row, long col) {
       this.rowType = rowType;
@@ -121,6 +115,8 @@ public class ModelLoader {
 
     /**
      * Get row type
+     *
+     * @return
      */
     int getRowType() {
       return rowType;
@@ -132,7 +128,6 @@ public class ModelLoader {
    * Dense double model, it use a 2-dimension double array to store model data
    */
   static class DenseDoubleModel extends Model {
-
     /**
      * model data
      */
@@ -179,7 +174,6 @@ public class ModelLoader {
    * Sparse double model, it use (int->double) maps to store model data and each map stores a row.
    */
   static class SparseDoubleModel extends Model {
-
     /**
      * Model data
      */
@@ -204,7 +198,7 @@ public class ModelLoader {
     /**
      * Get a model row use row index
      *
-     * @param rowId row index
+     * @param rowId  row index
      * @param partId partition index
      * @return a model row
      */
@@ -226,9 +220,9 @@ public class ModelLoader {
     /**
      * Get a model row
      *
-     * @param rowId row index
+     * @param rowId  row index
      * @param partId partition index
-     * @param nnz estimated non-zero elements number
+     * @param nnz    estimated non-zero elements number
      * @return a model row
      */
     public Int2DoubleOpenHashMap getRow(int rowId, int partId, int nnz) {
@@ -256,16 +250,16 @@ public class ModelLoader {
         if (model == null) {
           model = new Int2DoubleOpenHashMap[row];
           for (Map.Entry<Integer, Map<Integer, Int2DoubleOpenHashMap>> rowEntry : tempModel
-              .entrySet()) {
+            .entrySet()) {
             int size = 0;
             for (Map.Entry<Integer, Int2DoubleOpenHashMap> partEntry : rowEntry.getValue()
-                .entrySet()) {
+              .entrySet()) {
               size += partEntry.getValue().size();
             }
 
             model[rowEntry.getKey()] = new Int2DoubleOpenHashMap(size);
             for (Map.Entry<Integer, Int2DoubleOpenHashMap> partEntry : rowEntry.getValue()
-                .entrySet()) {
+              .entrySet()) {
               model[rowEntry.getKey()].putAll(partEntry.getValue());
             }
           }
@@ -281,7 +275,6 @@ public class ModelLoader {
    * Dense float model, it use a 2-dimension float array to store model
    */
   static class DenseFloatModel extends Model {
-
     /**
      * Model data
      */
@@ -328,7 +321,6 @@ public class ModelLoader {
    * Sparse float model, it use (int->float) maps to store model data and each map stores a row.
    */
   static class SparseFloatModel extends Model {
-
     /**
      * model data
      */
@@ -353,7 +345,7 @@ public class ModelLoader {
     /**
      * Get a model row
      *
-     * @param rowId row index
+     * @param rowId  row index
      * @param partId partition index
      * @return model row
      */
@@ -375,9 +367,9 @@ public class ModelLoader {
     /**
      * Get a model row
      *
-     * @param rowId row index
+     * @param rowId  row index
      * @param partId partition index
-     * @param nnz estimated non-zero elements number
+     * @param nnz    estimated non-zero elements number
      * @return model row
      */
     public Int2FloatOpenHashMap getRow(int rowId, int partId, int nnz) {
@@ -405,16 +397,16 @@ public class ModelLoader {
         if (model == null) {
           model = new Int2FloatOpenHashMap[row];
           for (Map.Entry<Integer, Map<Integer, Int2FloatOpenHashMap>> rowEntry : tempModel
-              .entrySet()) {
+            .entrySet()) {
             int size = 0;
             for (Map.Entry<Integer, Int2FloatOpenHashMap> partEntry : rowEntry.getValue()
-                .entrySet()) {
+              .entrySet()) {
               size += partEntry.getValue().size();
             }
 
             model[rowEntry.getKey()] = new Int2FloatOpenHashMap(size);
             for (Map.Entry<Integer, Int2FloatOpenHashMap> partEntry : rowEntry.getValue()
-                .entrySet()) {
+              .entrySet()) {
               model[rowEntry.getKey()].putAll(partEntry.getValue());
             }
           }
@@ -430,7 +422,6 @@ public class ModelLoader {
    * Dense int model, it use a 2-dimension int array to store model data
    */
   static class DenseIntModel extends Model {
-
     /**
      * model data
      */
@@ -464,6 +455,8 @@ public class ModelLoader {
 
     /**
      * Get the whole model
+     *
+     * @return
      */
     public int[][] getModel() {
       return model;
@@ -475,7 +468,6 @@ public class ModelLoader {
    * Sparse int model, it use (int->int) maps to store model data and each map stores a row.
    */
   static class SparseIntModel extends Model {
-
     /**
      * model data
      */
@@ -500,7 +492,7 @@ public class ModelLoader {
     /**
      * Get a model row
      *
-     * @param rowId row index
+     * @param rowId  row index
      * @param partId partition index
      * @return model row
      */
@@ -522,9 +514,9 @@ public class ModelLoader {
     /**
      * Get a model row
      *
-     * @param rowId row index
+     * @param rowId  row index
      * @param partId partition index
-     * @param nnz estimated non-zero number zero number
+     * @param nnz    estimated non-zero number zero number
      * @return model row
      */
     public Int2IntOpenHashMap getRow(int rowId, int partId, int nnz) {
@@ -552,16 +544,16 @@ public class ModelLoader {
         if (model == null) {
           model = new Int2IntOpenHashMap[row];
           for (Map.Entry<Integer, Map<Integer, Int2IntOpenHashMap>> rowEntry : tempModel
-              .entrySet()) {
+            .entrySet()) {
             int size = 0;
             for (Map.Entry<Integer, Int2IntOpenHashMap> partEntry : rowEntry.getValue()
-                .entrySet()) {
+              .entrySet()) {
               size += partEntry.getValue().size();
             }
 
             model[rowEntry.getKey()] = new Int2IntOpenHashMap(size);
             for (Map.Entry<Integer, Int2IntOpenHashMap> partEntry : rowEntry.getValue()
-                .entrySet()) {
+              .entrySet()) {
               model[rowEntry.getKey()].putAll(partEntry.getValue());
             }
           }
@@ -574,11 +566,9 @@ public class ModelLoader {
 
 
   /**
-   * Sparse double with long key model, it use (long->double) maps to store model data and each map
-   * stores a row.
+   * Sparse double with long key model, it use (long->double) maps to store model data and each map stores a row.
    */
   static class SparseDoubleLongKeyModel extends Model {
-
     /**
      * model data
      */
@@ -603,7 +593,7 @@ public class ModelLoader {
     /**
      * Get a model row
      *
-     * @param rowId row index
+     * @param rowId  row index
      * @param partId partition index
      * @return model row
      */
@@ -625,9 +615,9 @@ public class ModelLoader {
     /**
      * Get a model row
      *
-     * @param rowId row index
+     * @param rowId  row index
      * @param partId partition index
-     * @param nnz estimated non-zero elements number
+     * @param nnz    estimated non-zero elements number
      * @return model row
      */
     public Long2DoubleOpenHashMap getRow(int rowId, int partId, int nnz) {
@@ -655,16 +645,16 @@ public class ModelLoader {
         if (model == null) {
           model = new Long2DoubleOpenHashMap[row];
           for (Map.Entry<Integer, Map<Integer, Long2DoubleOpenHashMap>> rowEntry : tempModel
-              .entrySet()) {
+            .entrySet()) {
             int size = 0;
             for (Map.Entry<Integer, Long2DoubleOpenHashMap> partEntry : rowEntry.getValue()
-                .entrySet()) {
+              .entrySet()) {
               size += partEntry.getValue().size();
             }
 
             model[rowEntry.getKey()] = new Long2DoubleOpenHashMap(size);
             for (Map.Entry<Integer, Long2DoubleOpenHashMap> partEntry : rowEntry.getValue()
-                .entrySet()) {
+              .entrySet()) {
               model[rowEntry.getKey()].putAll(partEntry.getValue());
             }
           }
@@ -680,7 +670,6 @@ public class ModelLoader {
    * Load operation
    */
   static class LoadOp extends RecursiveAction {
-
     /**
      * Model data
      */
@@ -718,17 +707,17 @@ public class ModelLoader {
     /**
      * Create a LoadOp
      *
-     * @param model Model data
-     * @param fs File system handler
-     * @param matrixPath The model save directory path
+     * @param model        Model data
+     * @param fs           File system handler
+     * @param matrixPath   The model save directory path
      * @param partitionIds Need load partitions list
-     * @param meta Model meta
-     * @param errorMsgs Error logs
-     * @param startPos ForkJoin start position
-     * @param endPos ForkJoin end position
+     * @param meta         Model meta
+     * @param errorMsgs    Error logs
+     * @param startPos     ForkJoin start position
+     * @param endPos       ForkJoin end position
      */
     public LoadOp(Model model, FileSystem fs, Path matrixPath, List<Integer> partitionIds,
-        ModelFilesMeta meta, Vector<String> errorMsgs, int startPos, int endPos) {
+      ModelFilesMeta meta, Vector<String> errorMsgs, int startPos, int endPos) {
       this.model = model;
       this.fs = fs;
       this.matrixPath = matrixPath;
@@ -739,8 +728,7 @@ public class ModelLoader {
       this.endPos = endPos;
     }
 
-    @Override
-    protected void compute() {
+    @Override protected void compute() {
       if (endPos <= startPos) {
         return;
       }
@@ -755,17 +743,16 @@ public class ModelLoader {
       } else {
         int middle = (startPos + endPos) / 2;
         LoadOp opLeft =
-            new LoadOp(model, fs, matrixPath, partitionIds, meta, errorMsgs, startPos, middle);
+          new LoadOp(model, fs, matrixPath, partitionIds, meta, errorMsgs, startPos, middle);
         LoadOp opRight =
-            new LoadOp(model, fs, matrixPath, partitionIds, meta, errorMsgs, middle, endPos);
+          new LoadOp(model, fs, matrixPath, partitionIds, meta, errorMsgs, middle, endPos);
         invokeAll(opLeft, opRight);
       }
     }
   }
 
   private static void loadPartitions(Model model, Path matrixPath, FileSystem fs,
-      List<Integer> partitionIds, int startPos, int endPos, ModelFilesMeta meta)
-      throws IOException {
+    List<Integer> partitionIds, int startPos, int endPos, ModelFilesMeta meta) throws IOException {
 
     FSDataInputStream input = null;
     long offset = 0;
@@ -792,7 +779,7 @@ public class ModelLoader {
   }
 
   private static void loadPartition(Model model, FSDataInputStream input,
-      ModelPartitionMeta partMeta) throws IOException {
+    ModelPartitionMeta partMeta) throws IOException {
     switch (model.getRowType()) {
       case SPARSE_DOUBLE:
         loadSparseDoublePartition((SparseDoubleModel) model, input, partMeta);
@@ -828,7 +815,7 @@ public class ModelLoader {
   }
 
   private static void loadDenseDoublePartition(DenseDoubleModel model, FSDataInputStream input,
-      ModelPartitionMeta partMeta) throws IOException {
+    ModelPartitionMeta partMeta) throws IOException {
     int rowNum = input.readInt();
     int startCol = (int) partMeta.getStartCol();
     int endCol = (int) partMeta.getEndCol();
@@ -843,22 +830,8 @@ public class ModelLoader {
     }
   }
 
-  public static double[] loadDenseDoubleRowFromPartition(FSDataInputStream input,
-      ModelPartitionMeta partMeta, int rowId)
-      throws IOException {
-    RowOffset rowOffset = partMeta.getRowMetas().get(rowId);
-    input.seek(rowOffset.getOffset());
-    Preconditions.checkState (input.readInt() == rowId);
-    int num = (int) (partMeta.getEndCol() - partMeta.getStartCol());
-    double[] row = new double[num];
-    for (int i = 0; i < num; i++) {
-      row[i] = input.readDouble();
-    }
-    return row;
-  }
-
   private static void loadSparseDoublePartition(SparseDoubleModel model, FSDataInputStream input,
-      ModelPartitionMeta partMeta) throws IOException {
+    ModelPartitionMeta partMeta) throws IOException {
     int rowNum = input.readInt();
     int rowId = 0;
     int nnz = 0;
@@ -875,21 +848,8 @@ public class ModelLoader {
     }
   }
 
-  public static Int2DoubleOpenHashMap loadSparseDoubleRowFromPartition(FSDataInputStream input,
-      ModelPartitionMeta partMeta, int rowId) throws IOException {
-    RowOffset rowOffset = partMeta.getRowMetas().get(rowId);
-    input.seek(rowOffset.getOffset());
-    Preconditions.checkState (input.readInt() == rowId);
-    int num = input.readInt();
-    Int2DoubleOpenHashMap row = new Int2DoubleOpenHashMap();
-    for (int i = 0; i < num; i++) {
-      row.put(input.readInt(), input.readDouble());
-    }
-    return row;
-  }
-
   private static void loadDenseFloatPartition(DenseFloatModel model, FSDataInputStream input,
-      ModelPartitionMeta partMeta) throws IOException {
+    ModelPartitionMeta partMeta) throws IOException {
     int rowNum = input.readInt();
     int startCol = (int) partMeta.getStartCol();
     int endCol = (int) partMeta.getEndCol();
@@ -904,22 +864,8 @@ public class ModelLoader {
     }
   }
 
-  public static float[] loadDenseFloatRowFromPartition(FSDataInputStream input,
-      ModelPartitionMeta partMeta, int rowId)
-      throws IOException {
-    RowOffset rowOffset = partMeta.getRowMetas().get(rowId);
-    input.seek(rowOffset.getOffset());
-    Preconditions.checkState (input.readInt() == rowId);
-    int num = (int) (partMeta.getEndCol() - partMeta.getStartCol());
-    float[] row = new float[num];
-    for (int i = 0; i < num; i++) {
-      row[i] = input.readFloat();
-    }
-    return row;
-  }
-
   private static void loadSparseFloatPartition(SparseFloatModel model, FSDataInputStream input,
-      ModelPartitionMeta partMeta) throws IOException {
+    ModelPartitionMeta partMeta) throws IOException {
     int rowNum = input.readInt();
     int rowId = 0;
     int nnz = 0;
@@ -936,21 +882,8 @@ public class ModelLoader {
     }
   }
 
-  public static Int2FloatOpenHashMap loadSparseFloatRowFromPartition(FSDataInputStream input,
-      ModelPartitionMeta partMeta, int rowId) throws IOException {
-    RowOffset rowOffset = partMeta.getRowMetas().get(rowId);
-    input.seek(rowOffset.getOffset());
-    Preconditions.checkState (input.readInt() == rowId);
-    int num = input.readInt();
-    Int2FloatOpenHashMap row = new Int2FloatOpenHashMap();
-    for (int i = 0; i < num; i++) {
-      row.put(input.readInt(), input.readFloat());
-    }
-    return row;
-  }
-
   private static void loadDenseIntPartition(DenseIntModel model, FSDataInputStream input,
-      ModelPartitionMeta partMeta) throws IOException {
+    ModelPartitionMeta partMeta) throws IOException {
     int rowNum = input.readInt();
     int startCol = (int) partMeta.getStartCol();
     int endCol = (int) partMeta.getEndCol();
@@ -965,22 +898,8 @@ public class ModelLoader {
     }
   }
 
-  public static int[] loadDenseIntRowFromPartition(FSDataInputStream input,
-      ModelPartitionMeta partMeta, int rowId)
-      throws IOException {
-    RowOffset rowOffset = partMeta.getRowMetas().get(rowId);
-    input.seek(rowOffset.getOffset());
-    Preconditions.checkState (input.readInt() == rowId);
-    int num = (int) (partMeta.getEndCol() - partMeta.getStartCol());
-    int[] row = new int[num];
-    for (int i = 0; i < num; i++) {
-      row[i] = input.readInt();
-    }
-    return row;
-  }
-
   private static void loadSparseIntPartition(SparseIntModel model, FSDataInputStream input,
-      ModelPartitionMeta partMeta) throws IOException {
+    ModelPartitionMeta partMeta) throws IOException {
     int rowNum = input.readInt();
     int rowId = 0;
     int nnz = 0;
@@ -998,21 +917,8 @@ public class ModelLoader {
     }
   }
 
-  public static Int2IntOpenHashMap loadSparseIntRowFromPartition(FSDataInputStream input,
-      ModelPartitionMeta partMeta, int rowId) throws IOException {
-    RowOffset rowOffset = partMeta.getRowMetas().get(rowId);
-    input.seek(rowOffset.getOffset());
-    Preconditions.checkState (input.readInt() == rowId);
-    int num = input.readInt();
-    Int2IntOpenHashMap row = new Int2IntOpenHashMap();
-    for (int i = 0; i < num; i++) {
-      row.put(input.readInt(), input.readInt());
-    }
-    return row;
-  }
-
   private static void loadSparseDoubleLongKeyPartition(SparseDoubleLongKeyModel model,
-      FSDataInputStream input, ModelPartitionMeta partMeta) throws IOException {
+    FSDataInputStream input, ModelPartitionMeta partMeta) throws IOException {
     int rowNum = input.readInt();
     int rowId = 0;
     int nnz = 0;
@@ -1030,25 +936,13 @@ public class ModelLoader {
     }
   }
 
-  public static Long2DoubleOpenHashMap loadSparseDoubleLongKeyRowFromPartition(
-      FSDataInputStream input, ModelPartitionMeta partMeta, int rowId) throws IOException {
-    RowOffset rowOffset = partMeta.getRowMetas().get(rowId);
-    input.seek(rowOffset.getOffset());
-    Preconditions.checkState(input.readInt() == rowId);
-    int num = input.readInt();
-    Long2DoubleOpenHashMap row = new Long2DoubleOpenHashMap();
-    for (int j = 0; j < num; j++) {
-      row.put(input.readLong(), input.readDouble());
-    }
-    return row;
-  }
-
 
   /**
    * Get model meta
    *
    * @param modelDir model save directory path
    * @return model meta
+   * @throws IOException
    */
   public static ModelFilesMeta getMeta(String modelDir, Configuration conf) throws IOException {
     Path modelPath = new Path(modelDir);
@@ -1069,9 +963,9 @@ public class ModelLoader {
    *
    * @param modelDir model save directory path
    * @return model data
+   * @throws IOException
    */
-  public static double[][] loadToDoubleArrays(String modelDir, Configuration conf)
-      throws IOException {
+  public static double[][] loadToDoubleArrays(String modelDir, Configuration conf) throws IOException {
     // Load model meta
     ModelFilesMeta meta = getMeta(modelDir, conf);
 
@@ -1092,9 +986,9 @@ public class ModelLoader {
    *
    * @param modelDir model save directory path
    * @return model data
+   * @throws IOException
    */
-  public static Int2DoubleOpenHashMap[] loadToDoubleMaps(String modelDir, Configuration conf)
-      throws IOException {
+  public static Int2DoubleOpenHashMap[] loadToDoubleMaps(String modelDir, Configuration conf) throws IOException {
     // Load model meta
     ModelFilesMeta meta = getMeta(modelDir, conf);
 
@@ -1115,9 +1009,9 @@ public class ModelLoader {
    *
    * @param modelDir model save directory path
    * @return model data
+   * @throws IOException
    */
-  public static float[][] loadToFloatArrays(String modelDir, Configuration conf)
-      throws IOException {
+  public static float[][] loadToFloatArrays(String modelDir, Configuration conf) throws IOException {
     // Load model meta
     ModelFilesMeta meta = getMeta(modelDir, conf);
 
@@ -1138,9 +1032,9 @@ public class ModelLoader {
    *
    * @param modelDir model save directory path
    * @return model data
+   * @throws IOException
    */
-  public static Int2FloatOpenHashMap[] loadToFloatMaps(String modelDir, Configuration conf)
-      throws IOException {
+  public static Int2FloatOpenHashMap[] loadToFloatMaps(String modelDir, Configuration conf) throws IOException {
     // Load model meta
     ModelFilesMeta meta = getMeta(modelDir, conf);
 
@@ -1161,6 +1055,7 @@ public class ModelLoader {
    *
    * @param modelDir model save directory path
    * @return model data
+   * @throws IOException
    */
   public static int[][] loadToIntArrays(String modelDir, Configuration conf) throws IOException {
     // Load model meta
@@ -1183,9 +1078,9 @@ public class ModelLoader {
    *
    * @param modelDir model save directory path
    * @return model data
+   * @throws IOException
    */
-  public static Int2IntOpenHashMap[] loadToIntMaps(String modelDir, Configuration conf)
-      throws IOException {
+  public static Int2IntOpenHashMap[] loadToIntMaps(String modelDir, Configuration conf) throws IOException {
     // Load model meta
     ModelFilesMeta meta = getMeta(modelDir, conf);
 
@@ -1206,10 +1101,10 @@ public class ModelLoader {
    *
    * @param modelDir model save directory path
    * @return model data
+   * @throws IOException
    */
-  public static Long2DoubleOpenHashMap[] loadToDoubleLongKeyMaps(String modelDir,
-      Configuration conf)
-      throws IOException {
+  public static Long2DoubleOpenHashMap[] loadToDoubleLongKeyMaps(String modelDir, Configuration conf)
+    throws IOException {
     // Load model meta
     ModelFilesMeta meta = getMeta(modelDir, conf);
 
@@ -1225,9 +1120,8 @@ public class ModelLoader {
     return model.getModel();
   }
 
-  private static void loadModel(String modelDir, Model model, ModelFilesMeta meta,
-      Configuration conf)
-      throws IOException {
+  private static void loadModel(String modelDir, Model model, ModelFilesMeta meta, Configuration conf)
+    throws IOException {
     // Load model
     LOG.info("start to load model " + meta.getMatrixName() + " from " + modelDir);
     List<Integer> partIds = new ArrayList<>(meta.getPartMetas().keySet());
@@ -1248,9 +1142,9 @@ public class ModelLoader {
     StringBuilder sb = new StringBuilder();
     boolean first = true;
     for (String s : strings) {
-      if (first) {
+      if (first)
         first = false;
-      } else {
+      else {
         sb.append(separator);
       }
       sb.append(s);
@@ -1258,7 +1152,7 @@ public class ModelLoader {
     return sb.toString();
   }
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String [] args) throws IOException {
     final Configuration conf = new Configuration();
     // load hadoop configuration
     String hadoopHomePath = System.getenv("HADOOP_HOME");
@@ -1278,62 +1172,60 @@ public class ModelLoader {
     String sparseIntModelPath = baseDir + "/sparse_int";
     String sparseDoubleLongKeyModelPath = baseDir + "/sparse_double_longkey";
 
-    double[][] denseDoubleModel = loadToDoubleArrays(denseDoubleModelPath, conf);
+    double [][] denseDoubleModel = loadToDoubleArrays(denseDoubleModelPath, conf);
     int size = denseDoubleModel.length;
-    for (int i = 0; i < size; i++) {
+    for(int i = 0; i < size; i++) {
       LOG.info("model dense_double row " + i + " sum is " + sum(denseDoubleModel[i]));
     }
     denseDoubleModel = null;
 
     Int2DoubleOpenHashMap[] sparseDoubleModel = loadToDoubleMaps(sparseDoubleModelPath, conf);
     size = sparseDoubleModel.length;
-    for (int i = 0; i < size; i++) {
+    for(int i = 0; i < size; i++) {
       LOG.info("model sparse_double row " + i + " sum is " + sum(sparseDoubleModel[i]));
     }
     sparseDoubleModel = null;
 
-    float[][] denseFloatModel = loadToFloatArrays(denseFloatModelPath, conf);
+    float [][] denseFloatModel = loadToFloatArrays(denseFloatModelPath, conf);
     size = denseFloatModel.length;
-    for (int i = 0; i < size; i++) {
+    for(int i = 0; i < size; i++) {
       LOG.info("model dense_float row " + i + " sum is " + sum(denseFloatModel[i]));
     }
     denseFloatModel = null;
 
     Int2FloatOpenHashMap[] sparseFloatModel = loadToFloatMaps(sparseFloatModelPath, conf);
     size = sparseFloatModel.length;
-    for (int i = 0; i < size; i++) {
+    for(int i = 0; i < size; i++) {
       LOG.info("model sparse_float row " + i + " sum is " + sum(sparseFloatModel[i]));
     }
     sparseFloatModel = null;
 
-    int[][] denseIntModel = loadToIntArrays(denseIntModelPath, conf);
+    int [][] denseIntModel = loadToIntArrays(denseIntModelPath, conf);
     size = denseIntModel.length;
-    for (int i = 0; i < size; i++) {
+    for(int i = 0; i < size; i++) {
       LOG.info("model dense_int row " + i + " sum is " + sum(denseIntModel[i]));
     }
     denseIntModel = null;
 
     Int2IntOpenHashMap[] sparseIntModel = loadToIntMaps(sparseIntModelPath, conf);
     size = sparseIntModel.length;
-    for (int i = 0; i < size; i++) {
+    for(int i = 0; i < size; i++) {
       LOG.info("model sparse_int row " + i + " sum is " + sum(sparseIntModel[i]));
     }
     sparseIntModel = null;
 
-    Long2DoubleOpenHashMap[] sparseDoubleLongKeyModel = loadToDoubleLongKeyMaps(
-        sparseDoubleLongKeyModelPath, conf);
+    Long2DoubleOpenHashMap[] sparseDoubleLongKeyModel = loadToDoubleLongKeyMaps(sparseDoubleLongKeyModelPath, conf);
     size = sparseDoubleLongKeyModel.length;
-    for (int i = 0; i < size; i++) {
-      LOG.info(
-          "model sparse_double_longkey row " + i + " sum is " + sum(sparseDoubleLongKeyModel[i]));
+    for(int i = 0; i < size; i++) {
+      LOG.info("model sparse_double_longkey row " + i + " sum is " + sum(sparseDoubleLongKeyModel[i]));
     }
     sparseDoubleLongKeyModel = null;
   }
 
-  private static double sum(double[] values) {
+  private static double sum(double [] values) {
     double sum = 0.0;
     int size = values.length;
-    for (int i = 0; i < size; i++) {
+    for(int i = 0; i < size; i++) {
       sum += values[i];
     }
     return sum;
@@ -1341,16 +1233,16 @@ public class ModelLoader {
 
   private static double sum(Int2DoubleOpenHashMap values) {
     double sum = 0.0;
-    for (double v : values.values()) {
+    for(double v:values.values()) {
       sum += v;
     }
     return sum;
   }
 
-  private static double sum(float[] values) {
+  private static double sum(float [] values) {
     double sum = 0.0;
     int size = values.length;
-    for (int i = 0; i < size; i++) {
+    for(int i = 0; i < size; i++) {
       sum += values[i];
     }
     return sum;
@@ -1358,16 +1250,16 @@ public class ModelLoader {
 
   private static double sum(Int2FloatOpenHashMap values) {
     double sum = 0.0;
-    for (float v : values.values()) {
+    for(float v:values.values()) {
       sum += v;
     }
     return sum;
   }
 
-  private static long sum(int[] values) {
+  private static long sum(int [] values) {
     long sum = 0;
     int size = values.length;
-    for (int i = 0; i < size; i++) {
+    for(int i = 0; i < size; i++) {
       sum += values[i];
     }
     return sum;
@@ -1375,7 +1267,7 @@ public class ModelLoader {
 
   private static long sum(Int2IntOpenHashMap values) {
     long sum = 0;
-    for (int v : values.values()) {
+    for(int v:values.values()) {
       sum += v;
     }
     return sum;
@@ -1383,7 +1275,7 @@ public class ModelLoader {
 
   private static double sum(Long2DoubleOpenHashMap values) {
     double sum = 0;
-    for (double v : values.values()) {
+    for(double v:values.values()) {
       sum += v;
     }
     return sum;

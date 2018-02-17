@@ -16,8 +16,6 @@
 
 package com.tencent.angel.ml.matrix.psf.update.enhance;
 
-import com.tencent.angel.ps.impl.PSContext;
-
 /**
  * The base class updating function,invoke at parameter server actually. Please note: update udf use
  * the asynchronous consistency control protocol.
@@ -28,9 +26,6 @@ public abstract class UpdateFunc {
    */
   private final UpdateParam param;
   
-  /** PS context */
-  protected PSContext psContext;
-
   /**
    * Create a new UpdateParam
    *
@@ -49,14 +44,6 @@ public abstract class UpdateFunc {
     return param;
   }
   
-  /**
-   * Set PS context
-   * @param psContext ps context
-   */
-  public void setPsContext(PSContext psContext) {
-    this.psContext = psContext;
-  }
-
   /**
    * Partition update.
    *

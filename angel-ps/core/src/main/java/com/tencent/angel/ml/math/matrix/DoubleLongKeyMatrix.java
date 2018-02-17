@@ -22,17 +22,15 @@ import com.tencent.angel.ml.math.vector.TLongDoubleVector;
 /**
  * Base class of double matrix with long key row vector.
  */
-public abstract class DoubleLongKeyMatrix<ROW extends  TLongDoubleVector> extends RowbaseMatrix<ROW> {
+public abstract class DoubleLongKeyMatrix extends RowbaseMatrix {
   /**
    * Create a LongKeyDoubleMatrix
    * @param row row number
    * @param col row vector dimension
    */
-  public DoubleLongKeyMatrix(int row, long col,ROW[] vectors) {
-    super(row, col, vectors);
+  public DoubleLongKeyMatrix(int row, long col) {
+    super(row, col);
   }
-
-
 
   /**
    * Plus specified element of matrix by a update value.
@@ -46,7 +44,7 @@ public abstract class DoubleLongKeyMatrix<ROW extends  TLongDoubleVector> extend
     if (vectors[rowIndex] == null) {
       vectors[rowIndex] = initVector(rowIndex);
     }
-    vectors[rowIndex].plusBy(colIndex, value);
+    ((TLongDoubleVector)vectors[rowIndex]).plusBy(colIndex, value);
     return this;
   }
 
@@ -64,7 +62,7 @@ public abstract class DoubleLongKeyMatrix<ROW extends  TLongDoubleVector> extend
       if(vectors[rowIndexes[i]] == null) {
         vectors[rowIndexes[i]] = initVector(rowIndexes[i]);
       }
-      vectors[rowIndexes[i]].plusBy(colIndexes[i], values[i]);
+      ((TLongDoubleVector)vectors[rowIndexes[i]]).plusBy(colIndexes[i], values[i]);
     }
     return this;
   }
@@ -84,7 +82,7 @@ public abstract class DoubleLongKeyMatrix<ROW extends  TLongDoubleVector> extend
     }
 
     for(int i = 0; i < colIndexes.length; i++) {
-      vectors[rowIndex].plusBy(colIndexes[i], values[i]);
+      ((TLongDoubleVector)vectors[rowIndex]).plusBy(colIndexes[i], values[i]);
     }
     return this;
   }
@@ -100,6 +98,6 @@ public abstract class DoubleLongKeyMatrix<ROW extends  TLongDoubleVector> extend
     if(vectors[rowIndex] == null) {
       return 0.0;
     }
-    return vectors[rowIndex].get(colIndex);
+    return ((TLongDoubleVector)vectors[rowIndex]).get(colIndex);
   }
 }

@@ -17,6 +17,7 @@
 package com.tencent.angel.ml.matrix.transport;
 
 import com.tencent.angel.PartitionKey;
+import com.tencent.angel.ps.ParameterServerId;
 import com.tencent.angel.psagent.matrix.oplog.cache.RowUpdateSplit;
 import io.netty.buffer.ByteBuf;
 
@@ -26,9 +27,9 @@ public class PutPartitionRequest extends PartitionRequest {
   private List<RowUpdateSplit> rowsSplit;
   private boolean updateClock;
 
-  public PutPartitionRequest(int clock, PartitionKey partKey,
+  public PutPartitionRequest(ParameterServerId serverId, int clock, PartitionKey partKey,
       List<RowUpdateSplit> rowsSplit, boolean updateClock) {
-    super(clock, partKey);
+    super(serverId, clock, partKey);
     this.setRowsSplit(rowsSplit);
     this.setUpdateClock(updateClock);
   }

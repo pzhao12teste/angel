@@ -17,44 +17,33 @@
 
 package com.tencent.angel.ml.matrix.psf.get.enhance.indexed;
 
+import com.google.common.primitives.Ints;
 import com.tencent.angel.PartitionKey;
 import com.tencent.angel.ml.matrix.psf.get.base.GetParam;
 import com.tencent.angel.ml.matrix.psf.get.base.PartitionGetParam;
 import com.tencent.angel.psagent.PSAgentContext;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * The GetParam of IndexGetFunc
  */
 public class IndexGetParam extends GetParam {
-  private static final Log LOG = LogFactory.getLog(IndexGetParam.class);
+  private int matId;
   private int rowId;
-  private int[] indexes;
-  private Map<PartitionKey, int[]> partKeyToIndexesMap;
+  private int[] indexs;
 
   /**
    * @param matId matrixID
    * @param rowId rowID
-   * @param indexes specified index
+   * @param indexs specified index
    */
-  public IndexGetParam(int matId, int rowId, int[] indexes) {
+  public IndexGetParam(int matId, int rowId, int[] indexs) {
     super(matId);
     this.rowId = rowId;
-    this.indexes = indexes;
-  }
-
-  /**
-   * @param matId matrixID
-   * @param rowId rowID
-   * @param partKeyToIndexesMap specified index
-   */
-  public IndexGetParam(int matId, int rowId, Map<PartitionKey, int[]> partKeyToIndexesMap) {
-    super(matId);
-    this.rowId = rowId;
-    this.partKeyToIndexesMap = partKeyToIndexesMap;
+    this.indexs = indexs;
   }
 
   /**
@@ -63,80 +52,62 @@ public class IndexGetParam extends GetParam {
    */
   @Override
   public List<PartitionGetParam> split() {
-    long startTs = System.currentTimeMillis();
-    if(partKeyToIndexesMap == null) {
-      partKeyToIndexesMap = split(PSAgentContext.get().getMatrixMetaManager()
-        .getPartitions(matrixId, rowId), indexes);
-      indexes = null;
-    }
+    List<PartitionKey> parts = PSAgentContext.get().getMatrixPartitionRouter()
+        .getPartitionKeyList(matrixId, rowId);
 
-    List<PartitionGetParam> partParams = new ArrayList<>(partKeyToIndexesMap.size());
-    for(Map.Entry<PartitionKey, int[]> entry : partKeyToIndexesMap.entrySet()) {
-      if(entry.getValue().length > 0) {
-        partParams.add(new IndexPartGetParam(matrixId, rowId, entry.getKey(), entry.getValue()));
-      }
-    }
-    LOG.info("split use time=" + (System.currentTimeMillis() - startTs) + " ms " + " partParams number=" + partParams.size());
-    return partParams;
+    return usedParts(parts, indexs);
   }
 
   /**
    * Find the used partition of the specifiex index array of this matrix this row
-   * @param partKeys all partitions of this matrix and this row
-   * @param indexes specified index array
+   * @param parts all partitions of this matrix and this row
+   * @param indexs specified index array
    * @return the used partition of the specifiex index array of this matrix this row
    */
-  private Map<PartitionKey, int[]> split(List<PartitionKey> partKeys, int[] indexes) {
+  public List<PartitionGetParam> usedParts(List<PartitionKey> parts, int[] indexs) {
+    class AscAgeComparator implements Comparator<PartitionKey> {
+
+      @Override
+      public int compare(PartitionKey p1, PartitionKey p2) {
+        return p1.getPartitionId() - p2.getPartitionId();
+      }
+    }
+
     // Sort the parts by partitionId
-    Arrays.sort(indexes);
+    parts.sort(new AscAgeComparator());
 
-    HashMap<PartitionKey, int[]> ret = new HashMap<>();
+    List<PartitionGetParam> usedParts = new ArrayList<PartitionGetParam>();
+    int paramId = 0;
+    int j = 0;
+    for (int i = 0; i < parts.size() &&  j< indexs.length; ) {
+      long startCol = parts.get(i).getStartCol();
+      long endCol = parts.get(i).getEndCol();
 
-    // Sort partition keys use start column index
-    Collections.sort(partKeys,
-      (PartitionKey key1, PartitionKey key2) -> {
-        return key1.getStartCol() < key2.getStartCol() ? -1 : 1;
-      });
+      if ( (long) indexs[j] >= startCol && (long) indexs[j] < endCol) {
+        List<Integer> ids = new ArrayList<>();
 
-    int ii = 0;
-    int keyIndex = 0;
-    // For each partition, we generate a update split.
-    // Although the split is empty for partitions those without any update data,
-    // we still need to generate a update split to update the clock info on ps.
-    while (ii < indexes.length || keyIndex < partKeys.size()) {
-      int length = 0;
-      long endOffset = partKeys.get(keyIndex).getEndCol();
-      while (ii < indexes.length && indexes[ii] < endOffset) {
-        ii++;
-        length++;
+        while ((long) indexs[j] < endCol) {
+          ids.add(indexs[j]);
+          j++;
+          if (j == indexs.length) break;
+        }
+
+
+        usedParts.add(new IndexPartGetParam(matrixId, rowId, parts.get(i), Ints.toArray
+            (ids), paramId));
+        paramId++;
+        i++;
+
+      } else {
+        i++;
       }
 
-      int [] split = new int[length];
-      System.arraycopy(indexes, ii - length, split, 0, length);
-      ret.put(partKeys.get(keyIndex), split);
-      keyIndex++;
     }
-    return ret;
+
+    return  usedParts;
   }
 
   public int getRowId() {
     return rowId;
-  }
-
-  public int size() {
-    if(indexes != null) {
-      return indexes.length;
-    } else {
-      int counter = 0;
-      for(int[] partIndexes : partKeyToIndexesMap.values()) {
-        counter += partIndexes.length;
-      }
-
-      return counter;
-    }
-  }
-
-  public Map<PartitionKey,int[]> getPartKeyToIndexesMap() {
-    return partKeyToIndexesMap;
   }
 }

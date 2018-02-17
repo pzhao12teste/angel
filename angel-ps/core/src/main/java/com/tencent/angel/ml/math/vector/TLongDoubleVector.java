@@ -18,8 +18,6 @@
 package com.tencent.angel.ml.math.vector;
 
 import com.tencent.angel.ml.math.TVector;
-import it.unimi.dsi.fastutil.longs.Long2DoubleMap;
-import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -85,6 +83,4 @@ public abstract class TLongDoubleVector extends TDoubleVector {
   }
 
   public abstract double sum();
-
-  public abstract TLongDoubleVector elemUpdate(LongDoubleElemUpdater updater, ElemUpdateParam param);
 }

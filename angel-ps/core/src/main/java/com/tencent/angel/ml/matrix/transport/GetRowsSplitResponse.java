@@ -16,7 +16,7 @@
 
 package com.tencent.angel.ml.matrix.transport;
 
-import com.tencent.angel.ml.matrix.RowType;
+import com.tencent.angel.protobuf.generated.MLProtos.RowType;
 import com.tencent.angel.ps.impl.matrix.*;
 import io.netty.buffer.ByteBuf;
 
@@ -61,7 +61,7 @@ public class GetRowsSplitResponse extends Response {
   /**
    * Set the row splits.
    * 
-   * @param rowsSplit row splits
+   * @param List<ServerRow> row splits
    */
   public void setRowsSplit(List<ServerRow> rowsSplit) {
     this.rowsSplit = rowsSplit;
@@ -89,7 +89,7 @@ public class GetRowsSplitResponse extends Response {
     }
 
     int size = buf.readInt();
-    rowsSplit = new ArrayList<>();
+    rowsSplit = new ArrayList<ServerRow>();
     for (int i = 0; i < size; i++) {
       RowType type = RowType.valueOf(buf.readInt());
       ServerRow rowSplit = null;
@@ -121,10 +121,8 @@ public class GetRowsSplitResponse extends Response {
           break;
       }
 
-      if(rowSplit != null) {
-        rowSplit.deserialize(buf);
-        rowsSplit.add(rowSplit);
-      }
+      rowSplit.deserialize(buf);
+      rowsSplit.add(rowSplit);
     }
   }
 
@@ -132,7 +130,7 @@ public class GetRowsSplitResponse extends Response {
   public int bufferLen() {
     int len = super.bufferLen();
     if (rowsSplit != null) {
-      int size = rowsSplit.size();
+      int size = 0;
       for (int i = 0; i < size; i++) {
         len += rowsSplit.get(i).bufferLen();
       }

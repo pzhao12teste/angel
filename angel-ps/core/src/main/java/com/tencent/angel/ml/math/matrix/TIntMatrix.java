@@ -21,10 +21,15 @@ import com.tencent.angel.ml.math.vector.TIntVector;
 /**
  * The int base matrix.
  */
-public abstract class TIntMatrix<ROW extends TIntVector> extends RowbaseMatrix<ROW> {
-
-  public TIntMatrix(int row, long col, ROW[] vectors) {
-    super(row, col, vectors);
+public abstract class TIntMatrix extends RowbaseMatrix {
+  /**
+   * Create a new int matrix.
+   *
+   * @param row the row number
+   * @param col the column number
+   */
+  public TIntMatrix(int row, int col) {
+    super(row, col);
   }
 
   /**
@@ -38,7 +43,7 @@ public abstract class TIntMatrix<ROW extends TIntVector> extends RowbaseMatrix<R
     if (vectors[rowIndex] == null) {
       vectors[rowIndex] = initVector(rowIndex);
     }
-    vectors[rowIndex].plusBy(colIndex, value);
+    ((TIntVector)vectors[rowIndex]).plusBy(colIndex, value);
     return this;
   }
 
@@ -55,7 +60,7 @@ public abstract class TIntMatrix<ROW extends TIntVector> extends RowbaseMatrix<R
         vectors[rowIndexes[i]] = initVector(rowIndexes[i]);
       }
 
-      vectors[rowIndexes[i]].plusBy(colIndexes[i], values[i]);
+      ((TIntVector)vectors[rowIndexes[i]]).plusBy(colIndexes[i], values[i]);
     }
     return this;
   }
@@ -73,7 +78,7 @@ public abstract class TIntMatrix<ROW extends TIntVector> extends RowbaseMatrix<R
     }
 
     for(int i = 0; i < colIndexes.length; i++) {
-      vectors[rowIndex].plusBy(colIndexes[i], values[i]);
+      ((TIntVector)vectors[rowIndex]).plusBy(colIndexes[i], values[i]);
     }
     return this;
   }
@@ -88,6 +93,6 @@ public abstract class TIntMatrix<ROW extends TIntVector> extends RowbaseMatrix<R
   public int get(int rowIndex, int colIndex) {
     if (vectors[rowIndex] == null)
       return 0;
-    return vectors[rowIndex].get(colIndex);
+    return ((TIntVector)vectors[rowIndex]).get(colIndex);
   }
 }

@@ -14,6 +14,7 @@
 #
 
 from pyangel.conf import AngelConf
+from pyangel.context import Configuration
 from pyangel.ml_runner import MLRunner
 from pyangel.ml.client.angel_client_factory import AngelClientFactory
 
@@ -29,10 +30,33 @@ class LinearRegRunner(MLRunner):
         :return:
         """
 
-        conf['angel.worker.matrix.transfer.request.timeout.ms'] = 60000
+        conf.set_int("angel.worker.matrix.transfer.request.timeout.ms", 60000)
+        conf.set(AngelConf.ANGEL_TASK_USER_TASKCLASS, 'com.tencent.angel.ml.regression.linear.LinearRegTrainTask')
 
-        jconf = conf.dict_to_jconf()
-        super(LinearRegRunner, self).train(conf, conf._jvm.com.tencent.angel.ml.regression.linear.LinearRegModel(jconf, None), 'com.tencent.angel.ml.regression.linear.LinearRegTrainTask')
+        # Create an angel job client
+        client = AngelClientFactory.get(conf)
+
+        # Submit this application
+        client.startPSServer()
+
+        # Create a linear reg model
+        model = conf._jvm.com.tencent.angel.ml.regression.linear.LinearRegModel(conf._jconf, None)
+
+        # Load model meta to client
+        client.loadModel(model)
+
+        # Run user task
+        client.runTask("com.tencent.angel.ml.regression.linear.LinearRegTrainTask")
+
+        # Wait for completion,
+        # User task is set in AngelConf.ANGEL_TASK_USER_TASKCLASS
+        client.waitForCompletion()
+
+        # Save the trained model to HDFS
+        client.saveModel(model)
+
+        # Stop
+        client.stop()
 
     def predict(self, conf):
         """
@@ -40,11 +64,30 @@ class LinearRegRunner(MLRunner):
         :param conf: configuration of algorithm and resource
         :return:
         """
-        conf['angel.worker.matrix.transfer.request.timeout.ms'] = 60000
+        conf.set_int("angel.worker.matrix.transfer.request.timeout.ms", 60000)
+        conf.set(AngelConf.ANGEL_TASK_USER_TASKCLASS, 'com.tencent.angel.ml.regression.linear.LinearRegPredictTask')
 
-        jconf = conf.dict_to_jconf()
-        super(LinearRegRunner, self).train(conf, conf._jvm.com.tencent.angel.ml.regression.linear.LinearRegModel(jconf, None), 'com.tencent.angel.ml.regression.linear.LinearRegPredictTask')
+        # Create an angel job client
+        client = AngelClientFactory.get(conf)
 
+        # Submit this application
+        client.startPSServer()
+
+        # Create a model
+        model = conf._jvm.com.tencent.angel.ml.regression.linear.LinearRegModel(conf._jconf)
+
+        # Add the model meta to client
+        client.loadModel(model)
+
+        # Run user task
+        client.runTask('com.tencent.angel.ml.regression.linear.LinearRegPredictTask')
+
+        # Wait for completion,
+        # User task is set in AngelConf.ANGEL_TASK_USER_TASKCLASS
+        client.waitForCompletion()
+
+        # Stop
+        client.stop()
 
     def inc_train(self, conf):
         """
@@ -52,8 +95,8 @@ class LinearRegRunner(MLRunner):
         :param conf: configuration of aalgorithm and resource
         :return:
         """
-        conf['angel.worker.matrix.transfer.request.timeout.ms'] = 60000
-        conf[AngelConf.ANGEL_TASK_USER_TASKCLASS] = 'com.tencent.angel.ml.regression.linear.LinearRegTrainTask'
+        conf.set_int("angel.worker.matrix.transfer.request.timeout.ms", 60000)
+        conf.set(AngelConf.ANGEL_TASK_USER_TASKCLASS, 'com.tencent.angel.ml.regression.linear.LinearRegTrainTask')
 
         # Create an angel job client
         client = AngelClientFactory.get(conf)

@@ -16,7 +16,7 @@
 
 package com.tencent.angel.ps.impl.matrix;
 
-import com.tencent.angel.ml.matrix.RowType;
+import com.tencent.angel.protobuf.generated.MLProtos.RowType;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
@@ -31,11 +31,11 @@ import java.io.IOException;
 /**
  * The class represent sparse double row on parameter server.
  */
-public class ServerSparseDoubleRow extends ServerDoubleRow {
+public class ServerSparseDoubleRow extends ServerRow {
   private final static Log LOG = LogFactory.getLog(ServerSparseDoubleRow.class);
 
   /** Index->Value map */
-  private Int2DoubleOpenHashMap data;
+  private Int2DoubleOpenHashMap hashMap;
 
   /**
    * Create a ServerSparseDoubleRow
@@ -45,7 +45,7 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
    */
   public ServerSparseDoubleRow(int rowId, int startCol, int endCol) {
     super(rowId, startCol, endCol);
-    data = new Int2DoubleOpenHashMap();
+    hashMap = new Int2DoubleOpenHashMap();
   }
 
   /**
@@ -59,9 +59,9 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
     try {
       lock.readLock().lock();
       super.writeTo(output);
-      output.writeInt(data.size());
+      output.writeInt(hashMap.size());
 
-      ObjectIterator<Int2DoubleMap.Entry> iter = data.int2DoubleEntrySet().fastIterator();
+      ObjectIterator<Int2DoubleMap.Entry> iter = hashMap.int2DoubleEntrySet().fastIterator();
       Int2DoubleMap.Entry entry = null;
       while (iter.hasNext()) {
         entry = iter.next();
@@ -79,7 +79,7 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
       super.readFrom(input);
       int nnz = input.readInt();
       for (int i = 0; i < nnz; i++) {
-        data.addTo(input.readInt(), input.readDouble());
+        hashMap.addTo(input.readInt(), input.readDouble());
       }
     } finally {
       lock.writeLock().unlock();
@@ -93,7 +93,7 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
   @Override public int size() {
     try {
       lock.readLock().lock();
-      return data.size();
+      return hashMap.size();
     } finally {
       lock.readLock().unlock();
     }
@@ -127,35 +127,35 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
     int startColInt = (int) startCol;
     resizeHashMap(size);
     for (int i = 0; i < size; i++) {
-      data.addTo(i + startColInt, buf.readDouble());
+      hashMap.addTo(i + startColInt, buf.readDouble());
     }
   }
 
   private void updateDoubleSparse(ByteBuf buf, int size) {
     resizeHashMap(size);
     for (int i = 0; i < size; i++) {
-      data.addTo(buf.readInt(), buf.readDouble());
+      hashMap.addTo(buf.readInt(), buf.readDouble());
     }
   }
 
   private void resizeHashMap(int size) {
-    if(data.size() < size) {
-      Int2DoubleOpenHashMap oldMap = data;
-      data = new Int2DoubleOpenHashMap(size);
-      data.putAll(oldMap);
+    if(hashMap.size() < size) {
+      Int2DoubleOpenHashMap oldMap = hashMap;
+      hashMap = new Int2DoubleOpenHashMap(size);
+      hashMap.putAll(oldMap);
     }
   }
 
   public Int2DoubleOpenHashMap getData() {
-    return data;
+    return hashMap;
   }
 
   @Override public void serialize(ByteBuf buf) {
     try {
       lock.readLock().lock();
       super.serialize(buf);
-      buf.writeInt(data.size());
-      ObjectIterator<Int2DoubleMap.Entry> iter = data.int2DoubleEntrySet().fastIterator();
+      buf.writeInt(hashMap.size());
+      ObjectIterator<Int2DoubleMap.Entry> iter = hashMap.int2DoubleEntrySet().fastIterator();
 
       Int2DoubleMap.Entry entry = null;
       while (iter.hasNext()) {
@@ -173,11 +173,11 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
       lock.writeLock().lock();
       super.deserialize(buf);
       int elemNum = buf.readInt();
-      if (data == null) {
-        data = new Int2DoubleOpenHashMap(elemNum);
+      if (hashMap == null) {
+        hashMap = new Int2DoubleOpenHashMap(elemNum);
       }
       for (int i = 0; i < elemNum; i++) {
-        data.put(buf.readInt(), buf.readDouble());
+        hashMap.put(buf.readInt(), buf.readDouble());
       }
     } finally {
       lock.writeLock().unlock();
@@ -187,18 +187,9 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
   @Override public int bufferLen() {
     try {
       lock.readLock().lock();
-      return super.bufferLen() + 4 + data.size() * 12;
+      return super.bufferLen() + 4 + hashMap.size() * 12;
     } finally {
       lock.readLock().unlock();
-    }
-  }
-
-  @Override public void reset() {
-    try {
-      lock.writeLock().lock();
-      data.clear();
-    } finally {
-      lock.writeLock().unlock();
     }
   }
 
@@ -213,7 +204,7 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
       resizeHashMap(size);
       int startColInt = (int) startCol;
       for (int i = 0; i < size; i++) {
-        data.addTo(i + startColInt, buf.readDouble());
+        hashMap.addTo(i + startColInt, buf.readDouble());
       }
     } finally {
       lock.writeLock().unlock();
@@ -230,7 +221,7 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
       lock.writeLock().lock();
       resizeHashMap(size);
       for (int i = 0; i < size; i++) {
-        data.addTo(buf.readInt(), buf.readDouble());
+        hashMap.addTo(buf.readInt(), buf.readDouble());
       }
     } finally {
       lock.writeLock().unlock();
@@ -244,7 +235,7 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
   public void mergeTo(Int2DoubleOpenHashMap indexToValueMap) {
     try {
       lock.readLock().lock();
-      indexToValueMap.putAll(data);
+      indexToValueMap.putAll(hashMap);
     } finally {
       lock.readLock().unlock();
     }
@@ -260,13 +251,13 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
   public void mergeTo(int[] indexes, double[] values, int startPos, int len) {
     try {
       lock.readLock().lock();
-      int writeLen = len < data.size() ? len : data.size();
+      int writeLen = len < hashMap.size() ? len : hashMap.size();
       if (writeLen == 0) {
         return;
       }
 
       int index = 0;
-      ObjectIterator<Int2DoubleMap.Entry> iter = data.int2DoubleEntrySet().fastIterator();
+      ObjectIterator<Int2DoubleMap.Entry> iter = hashMap.int2DoubleEntrySet().fastIterator();
 
       Int2DoubleMap.Entry entry = null;
       while (iter.hasNext()) {
@@ -281,9 +272,5 @@ public class ServerSparseDoubleRow extends ServerDoubleRow {
     } finally {
       lock.readLock().unlock();
     }
-  }
-
-  @Override protected double getValue(int index) {
-    return data.get(index);
   }
 }

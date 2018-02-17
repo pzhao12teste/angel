@@ -22,7 +22,6 @@ import org.apache.spark.SparkContext
 import com.tencent.angel.spark.context.PSContext
 import com.tencent.angel.spark.examples.util.Logistic
 import com.tencent.angel.spark.models.vector.PSVector
-import com.tencent.angel.spark.linalg.{DenseVector => SONADV}
 
 
 object AngelLR {
@@ -57,12 +56,12 @@ object AngelLR {
     for (i <- 1 to ITERATIONS) {
       println("On iteration " + i)
 
-      val localW = new DenseVector(psW.pull.values)
+      val localW = new DenseVector(psW.pull())
 
       val temp = trainData.map { case (feature, label) =>
         val x = new DenseVector(feature.toArray)
         val g = -label * (1 - 1.0 / (1.0 + math.exp(-label * localW.dot(x)))) * x
-        psG.toCache.increment(new SONADV(g.toArray))
+        psG.increment(g.toArray)
       }
       temp.count()
 
@@ -70,7 +69,7 @@ object AngelLR {
       psG.zero()
     }
 
-    println(s"Final psW: ${psW.pull.values.mkString(" ")}")
+    println(s"Final psW: ${psW.pull().mkString(" ")}")
   }
 
 }

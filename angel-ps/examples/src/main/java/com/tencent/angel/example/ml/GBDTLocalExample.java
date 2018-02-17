@@ -70,9 +70,8 @@ public class GBDTLocalExample {
     conf.setBoolean("mapred.mapper.new-api", true);
     conf.setBoolean(AngelConf.ANGEL_JOB_OUTPUT_PATH_DELETEONEXIST, true);
 
-    // Use local deploy mode and data format
+    // Use local deploy mode and dummy data spliter
     conf.set(AngelConf.ANGEL_DEPLOY_MODE, "LOCAL");
-    conf.set(MLConf.ML_DATA_FORMAT(), String.valueOf(dataFmt));
 
     // set input, output path
     conf.set(AngelConf.ANGEL_INPUTFORMAT_CLASS, CombineTextInputFormat.class.getName());

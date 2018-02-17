@@ -107,7 +107,7 @@ public class MMUpdateParam extends UpdateParam {
   @Override
   public List<PartitionUpdateParam> split() {
     List<PartitionKey> parts =
-        PSAgentContext.get().getMatrixMetaManager().getPartitions(matrixId);
+        PSAgentContext.get().getMatrixPartitionRouter().getPartitionKeyList(matrixId);
     int size = parts.size();
     List<PartitionUpdateParam> partParams = new ArrayList<PartitionUpdateParam>(size);
     for (PartitionKey part : parts) {

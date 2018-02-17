@@ -17,6 +17,7 @@
 package com.tencent.angel.ml.matrix.transport;
 
 import com.tencent.angel.PartitionKey;
+import com.tencent.angel.ps.ParameterServerId;
 import io.netty.buffer.ByteBuf;
 
 /**
@@ -30,23 +31,15 @@ public abstract class PartitionRequest extends Request {
   /** matrix partition key */
   protected PartitionKey partKey;
 
-  /** Is the request come from ps */
-  protected boolean comeFromPs;
-
-  /** The ps that send the request */
-  //protected ParameterServerId psId;
-
-  /** The location of ps that send the request */
-  //protected Location location;
-
   /**
    * Create a new PartitionRequest.
    *
+   * @param serverId PS id
    * @param clock clock value
    * @param partKey matrix partition key
    */
-  public PartitionRequest(int clock, PartitionKey partKey) {
-    super(new RequestContext());
+  public PartitionRequest(ParameterServerId serverId, int clock, PartitionKey partKey) {
+    super(serverId);
     this.clock = clock;
     this.partKey = partKey;
   }
@@ -55,7 +48,7 @@ public abstract class PartitionRequest extends Request {
    * Create a new PartitionRequest.
    */
   public PartitionRequest() {
-    this(0, null);
+    this(null, 0, null);
   }
 
   /**
@@ -94,53 +87,19 @@ public abstract class PartitionRequest extends Request {
     this.partKey = partKey;
   }
 
-  /**
-   * Is come from ps
-   * @return true means this request come from a ps
-   */
-  public boolean isComeFromPs() {
-    return comeFromPs;
-  }
-
-  /**
-   * Set is the request come from a ps
-   * @param comeFromPs is the request come from a ps
-   */
-  public void setComeFromPs(boolean comeFromPs) {
-    this.comeFromPs = comeFromPs;
-  }
-
-
   @Override
   public void serialize(ByteBuf buf) {
     super.serialize(buf);
-    buf.writeBoolean(comeFromPs);
     buf.writeInt(clock);
     partKey.serialize(buf);
-    //if(comeFromPs) {
-    //  buf.writeInt(psId.getIndex());
-    //  byte[] data = location.getIp().getBytes();
-    //  buf.writeInt(data.length);
-    //  buf.writeBytes(data);
-    //  buf.writeInt(location.getPort());
-    //}
   }
 
   @Override
   public void deserialize(ByteBuf buf) {
     super.deserialize(buf);
-    comeFromPs = buf.readBoolean();
     clock = buf.readInt();
     partKey = new PartitionKey();
     partKey.deserialize(buf);
-
-    //if(comeFromPs) {
-    //  psId = new ParameterServerId(buf.readInt());
-    //  int size = buf.readInt();
-    //  byte[] data = new byte[size];
-    //  buf.readBytes(data);
-    //  location = new Location(new String(data), buf.readInt());
-    //}
   }
 
   @Override
@@ -152,30 +111,36 @@ public abstract class PartitionRequest extends Request {
     }
   }
 
-  @Override public String toString() {
-    return "PartitionRequest{" + "clock=" + clock + ", partKey=" + partKey + ", comeFromPs="
-      + comeFromPs + "} " + super.toString();
-  }
-
-  @Override public boolean equals(Object o) {
-    if (this == o)
-      return true;
-    if (o == null || getClass() != o.getClass())
-      return false;
-
-    PartitionRequest that = (PartitionRequest) o;
-
-    if (clock != that.clock)
-      return false;
-    if (comeFromPs != that.comeFromPs)
-      return false;
-    return partKey != null ? partKey.equals(that.partKey) : that.partKey == null;
-  }
-
-  @Override public int hashCode() {
-    int result = clock;
-    result = 31 * result + (partKey != null ? partKey.hashCode() : 0);
-    result = 31 * result + (comeFromPs ? 1 : 0);
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + clock;
+    result = prime * result + ((partKey == null) ? 0 : partKey.hashCode());
     return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    PartitionRequest other = (PartitionRequest) obj;
+    if (clock != other.clock)
+      return false;
+    if (partKey == null) {
+      if (other.partKey != null)
+        return false;
+    } else if (!partKey.equals(other.partKey))
+      return false;
+    return true;
+  }
+
+  @Override
+  public String toString() {
+    return "PartitionRequest [clock=" + clock + ", partKey=" + partKey + "]";
   }
 }

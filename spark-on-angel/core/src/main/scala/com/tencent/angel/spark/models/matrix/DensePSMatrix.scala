@@ -16,14 +16,14 @@
 
 package com.tencent.angel.spark.models.matrix
 
+import com.tencent.angel.ml.matrix.MatrixMeta
 import com.tencent.angel.spark.client.PSClient
 import com.tencent.angel.spark.context.PSContext
-import com.tencent.angel.spark.models.vector.DensePSVector
 
 class DensePSMatrix(
-    id: Int,
     rows: Int,
-    columns: Int) extends PSMatrix(id, rows, columns) {
+    columns: Int,
+    meta: MatrixMeta) extends PSMatrix(rows, columns, meta) {
 
   /**
    * Operations for the whole matrix
@@ -33,20 +33,11 @@ class DensePSMatrix(
    * @param array local matrix
    */
   def push(array: Array[Array[Double]]): Unit = {
-    assertValid()
     require(rows == array.length && columns == array(0).length,
       "matrix dimension does not match!")
     (0 until rows).foreach { rowId =>
-      push(rowId, array(rowId))
+      super.push(rowId, array(rowId))
     }
-  }
-
-  /**
-   * Push a array to `rowId` in matrix
-   */
-  def push(rowId: Int, array: Array[Double]) = {
-    assertValid()
-    PSClient.instance().denseRowOps.push(getRow(rowId), array)
   }
 
   /**
@@ -54,16 +45,7 @@ class DensePSMatrix(
    * @return local matrix
    */
   def pull(): Array[Array[Double]] = {
-    assertValid()
-    PSClient.instance().matrixOps.pull(this)
-  }
-
-  /**
-   * Pull a row to local from PS
-   */
-  def pull(rowId: Int): Array[Double] = {
-    assertValid()
-    PSClient.instance().denseRowOps.pull(getRow(rowId)).values
+    psClient.matrixOps.pull(this)
   }
 
   /**
@@ -71,36 +53,25 @@ class DensePSMatrix(
    * @param array local matrix
    */
   def increment(array: Array[Array[Double]]): Unit = {
-    assertValid()
     require(rows == array.length && columns == array(0).length,
       "matrix dimension does not match!")
     (0 until rows).foreach { rowId =>
-      increment(rowId, array(rowId))
+      super.increment(rowId, array(rowId))
     }
-  }
-
-  /**
-   * Increment a row of matrix with `array`
-   */
-  def increment(rowId: Int, array: Array[Double]) = {
-    assertValid()
-    PSClient.instance().denseRowOps.increment(getRow(rowId), array)
-  }
-
-
-  private def getRow(rowId: Int): DensePSVector = {
-    new DensePSVector(id, rowId, columns.toInt)
   }
 }
 
 object DensePSMatrix {
+  val psContext = PSContext.instance()
+  val psClient = PSClient.instance()
+
   def apply(rows: Int, cols: Int): DensePSMatrix = {
     apply(rows, cols, -1, -1)
   }
 
   def apply(rows: Int, cols: Int, rowInBlock: Int, colInBlock: Int): DensePSMatrix = {
-    val matrixMeta = PSContext.instance().createMatrix(rows, cols, MatrixType.DENSE, rowInBlock, colInBlock)
-    new DensePSMatrix(matrixMeta.getId, rows, cols)
+    val matrixMeta = psContext.createMatrix(rows, cols, MatrixType.DENSE, rowInBlock, colInBlock)
+    new DensePSMatrix(rows, cols, matrixMeta)
   }
 
   /**
@@ -115,7 +86,7 @@ object DensePSMatrix {
    */
   def rand(rows: Int, cols: Int): DensePSMatrix = {
     val mat = DensePSMatrix(rows, cols)
-    PSClient.instance().matrixOps.random(mat)
+    psClient.initOps.random(mat)
     mat
   }
 
@@ -124,7 +95,7 @@ object DensePSMatrix {
    */
   def eye(dim: Int): DensePSMatrix = {
     val mat = DensePSMatrix(dim, dim)
-    PSClient.instance().matrixOps.eye(mat)
+    psClient.matrixOps.eye(mat)
     mat
   }
 
@@ -134,7 +105,7 @@ object DensePSMatrix {
   def diag(array: Array[Double]): DensePSMatrix = {
     val dim = array.length
     val mat = DensePSMatrix(dim, dim)
-    PSClient.instance().matrixOps.diag(mat, array)
+    psClient.matrixOps.diag(mat, array)
     mat
   }
 
@@ -143,7 +114,7 @@ object DensePSMatrix {
    */
   def fill(rows: Int, cols: Int, x: Double): DensePSMatrix = {
     val mat = DensePSMatrix(rows, cols)
-    PSClient.instance().matrixOps.fill(mat, x)
+    psClient.matrixOps.fill(mat, x)
     mat
   }
 

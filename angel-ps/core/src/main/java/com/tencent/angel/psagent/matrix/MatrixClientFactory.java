@@ -144,8 +144,4 @@ public class MatrixClientFactory {
       return "Key [matrixId=" + matrixId + ", taskId=" + taskId + "]";
     }
   }
-
-  public static void clear() {
-    cacheClients.clear();
-  }
 }

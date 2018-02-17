@@ -77,7 +77,7 @@ public class UnaryAggrParam extends GetParam {
   @Override
   public List<PartitionGetParam> split() {
     List<PartitionKey> parts =
-        PSAgentContext.get().getMatrixMetaManager().getPartitions(matrixId);
+        PSAgentContext.get().getMatrixPartitionRouter().getPartitionKeyList(matrixId);
     int size = parts.size();
 
     List<PartitionGetParam> partParams = new ArrayList<PartitionGetParam>(size);

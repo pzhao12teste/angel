@@ -16,9 +16,14 @@
 
 __all__ = ['Configuration', 'AngelConf']
 
+import sys
+import re
 
 from pyangel.context import Configuration
 
+if sys.version > '3':
+    unicode = str
+    __doc__ = re.sub(r"(\W|^)[uU](['])", r'\1\2', __doc__)
 
 class AngelParams(type):
     """
@@ -31,5 +36,5 @@ class AngelParams(type):
         _utils = _jvm.com.tencent.angel.utils.ReflectionUtils.getAttr(item, _jangel_conf)
         return str(_utils)
 
-class AngelConf(metaclass=AngelParams):
-    pass
+class AngelConf:
+    __metaclass__ = AngelParams

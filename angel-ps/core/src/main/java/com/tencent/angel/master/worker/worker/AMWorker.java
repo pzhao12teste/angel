@@ -281,8 +281,6 @@ public class AMWorker implements EventHandler<AMWorkerEvent> {
       StringBuilder diagnostic = new StringBuilder();
       diagnostic.append(workerAttemptId.toString()).append(" failed due to: ");
       diagnostic.append(StringUtils.join("\n", worker.attempts.get(workerAttemptId).getDiagnostics()));
-      diagnostic.append(" Detail Worker Log URL:");
-      diagnostic.append(worker.attempts.get(workerAttemptId).getLogUrl());
           
       if (LOG.isDebugEnabled()) {
         LOG.debug(workerAttemptId + "failed due to:" + diagnostic.toString());
@@ -318,8 +316,6 @@ public class AMWorker implements EventHandler<AMWorkerEvent> {
       diagnostic.append(workerAttemptId.toString()).append(" failed due to: ");
       diagnostic.append(StringUtils.join("\n", worker.attempts.get(workerAttemptId)
           .getDiagnostics()));
-      diagnostic.append(" Detail Worker Log URL:");
-      diagnostic.append(worker.attempts.get(workerAttemptId).getLogUrl());
 
       if (LOG.isDebugEnabled()) {
         LOG.debug(workerAttemptId + "failed due to:" + diagnostic.toString());

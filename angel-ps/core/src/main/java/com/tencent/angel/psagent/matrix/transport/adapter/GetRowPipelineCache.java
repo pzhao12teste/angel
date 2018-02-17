@@ -17,7 +17,6 @@
 package com.tencent.angel.psagent.matrix.transport.adapter;
 
 import com.tencent.angel.ml.math.TVector;
-import com.tencent.angel.ml.matrix.RowType;
 import com.tencent.angel.protobuf.generated.MLProtos;
 import com.tencent.angel.ps.impl.matrix.ServerRow;
 import com.tencent.angel.psagent.matrix.transport.FutureResult;
@@ -48,7 +47,7 @@ public class GetRowPipelineCache extends PartitionResponseCache {
   private final double startMergeRatio;
 
   /** row type */
-  private final RowType rowType;
+  private final MLProtos.RowType rowType;
 
   /** merged result */
   private final FutureResult<TVector> mergedResult;
@@ -62,7 +61,7 @@ public class GetRowPipelineCache extends PartitionResponseCache {
    * @param totalRequestNum the number of sub-requests
    * @param rowType row type
    */
-  public GetRowPipelineCache(int totalRequestNum, RowType rowType) {
+  public GetRowPipelineCache(int totalRequestNum, MLProtos.RowType rowType) {
     super(totalRequestNum);
     this.rowType = rowType;
 
@@ -129,8 +128,8 @@ public class GetRowPipelineCache extends PartitionResponseCache {
     checkFutures();
 
     // Now we just support pipelined row splits merging for dense type row
-    if (rowType == RowType.T_DOUBLE_DENSE || rowType == RowType.T_INT_DENSE
-        || rowType == RowType.T_FLOAT_DENSE) {
+    if (rowType == MLProtos.RowType.T_DOUBLE_DENSE || rowType == MLProtos.RowType.T_INT_DENSE
+        || rowType == MLProtos.RowType.T_FLOAT_DENSE) {
       return getProgress() >= startMergeRatio;
     } else {
       return isReceivedOver();
@@ -156,7 +155,7 @@ public class GetRowPipelineCache extends PartitionResponseCache {
    * 
    * @return RowType row type
    */
-  public RowType getRowType() {
+  public MLProtos.RowType getRowType() {
     return rowType;
   }
 

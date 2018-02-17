@@ -19,7 +19,7 @@ package com.tencent.angel.ml.math;
 /**
  * The base matrix,represented a multidimensional values.
  */
-public abstract class TMatrix<V> extends TUpdate {
+public abstract class TMatrix extends TUpdate {
   /**
    * The Matrix id.
    */
@@ -124,6 +124,4 @@ public abstract class TMatrix<V> extends TUpdate {
    */
   public abstract TMatrix plusBy(TMatrix other);
 
-
-  public abstract V getRow(int rowIndex);
 }

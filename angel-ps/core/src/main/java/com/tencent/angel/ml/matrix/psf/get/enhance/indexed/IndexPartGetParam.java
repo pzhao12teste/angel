@@ -21,71 +21,90 @@ import com.tencent.angel.PartitionKey;
 import com.tencent.angel.ml.matrix.psf.get.base.PartitionGetParam;
 import io.netty.buffer.ByteBuf;
 
-import java.util.Map;
-
 /**
  * Specified index part get param class, denotes the rowId and the specified index array.
  */
 public class IndexPartGetParam extends PartitionGetParam {
   private int rowId;
-  private volatile int[] indexes;
+  private int paramId;
+  private int[] index;
 
   /**
    * @param matrixId matrix id
    * @param rowId row id
    * @param partKey partition key
-   * @param indexes specified indexes
+   * @param index specified index
+   * @param paramId the part param id
    */
-  public IndexPartGetParam(int matrixId, int rowId, PartitionKey partKey, int[] indexes) {
+  public IndexPartGetParam(int matrixId, int rowId, PartitionKey partKey, int[] index,
+                                    int paramId) {
     super(matrixId, partKey);
     this.rowId = rowId;
-    this.indexes = indexes;
+    this.index = index;
+    this.paramId = paramId;
   }
 
   /**
    * Creates a new partition parameter.
    */
   public IndexPartGetParam() {
-    this(-1, -1, null, null);
+    this(-1, -1, null, null, -1);
   }
 
   @Override
   public void serialize(ByteBuf buf) {
-    super.serialize(buf);
+    buf.writeInt(matrixId);
+    if (partKey != null)
+      partKey.serialize(buf);
+
     buf.writeInt(rowId);
-    buf.writeInt(indexes.length);
-    if (indexes.length > 0) {
-      for (int i = 0; i < indexes.length; i++) {
-        buf.writeInt(indexes[i]);
+    buf.writeInt(paramId);
+    buf.writeInt(index.length);
+
+    if (index.length > 0) {
+      for (int id : index) {
+        buf.writeInt(id);
       }
     }
   }
 
   @Override
   public void deserialize(ByteBuf buf) {
-    super.deserialize(buf);
+    matrixId = buf.readInt();
+    if (buf.isReadable()) {
+      if (partKey == null) {
+        partKey = new PartitionKey();
+      }
+
+      partKey.deserialize(buf);
+    }
 
     this.rowId = buf.readInt();
+    this.paramId = buf.readInt();
     int len = buf.readInt();
+
     if (len > 0) {
-      indexes = new int[len];
+      index = new int[len];
       for (int i = 0; i < len; i++) {
-        indexes[i] = buf.readInt();
+        index[i] = buf.readInt();
       }
     }
   }
 
   @Override
   public int bufferLen() {
-    return 8 + 4 * indexes.length + super.bufferLen();
+    return 16 + 8 * index.length;
   }
 
   public int getRowId() {
     return rowId;
   }
 
-  public int[] getIndexes() {
-    return indexes;
+  public int[] getIndex() {
+    return index;
   }
 
+  public int getParamId() {
+    return paramId;
+  }
 }

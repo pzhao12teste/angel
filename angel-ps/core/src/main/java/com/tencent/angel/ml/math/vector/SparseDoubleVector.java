@@ -16,23 +16,20 @@
 
 package com.tencent.angel.ml.math.vector;
 
-import com.tencent.angel.common.Serialize;
 import com.tencent.angel.ml.math.TAbstractVector;
 import com.tencent.angel.ml.math.TVector;
-import com.tencent.angel.ml.matrix.RowType;
-import io.netty.buffer.ByteBuf;
+import com.tencent.angel.protobuf.generated.MLProtos;
 import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2FloatMap;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
-import java.util.stream.IntStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 /**
  * SparseLong2DoubleVector using HashMap<Long, Double> as its backend storage
  */
-public class SparseDoubleVector extends TIntDoubleVector implements Serialize{
+public class SparseDoubleVector extends TIntDoubleVector {
 
   private final static Log LOG = LogFactory.getLog(SparseDoubleVector.class);
 
@@ -123,23 +120,12 @@ public class SparseDoubleVector extends TIntDoubleVector implements Serialize{
   @Override public double sum() {
     double ret = 0.0;
     ObjectIterator<Int2DoubleMap.Entry> iter = this.hashMap.int2DoubleEntrySet().fastIterator();
-    Int2DoubleMap.Entry entry;
+    Int2DoubleMap.Entry entry = null;
     while (iter.hasNext()) {
       entry = iter.next();
       ret += entry.getDoubleValue();
     }
     return ret;
-  }
-
-  @Override
-  public TIntDoubleVector elemUpdate(IntDoubleElemUpdater updater, ElemUpdateParam param) {
-    ObjectIterator<Int2DoubleMap.Entry> iter = this.hashMap.int2DoubleEntrySet().fastIterator();
-    Int2DoubleMap.Entry entry;
-    while (iter.hasNext()) {
-      entry = iter.next();
-      entry.setValue(updater.action(entry.getIntKey(), entry.getDoubleValue(), param));
-    }
-    return this;
   }
 
   @Override public TIntDoubleVector clone() {
@@ -279,8 +265,8 @@ public class SparseDoubleVector extends TIntDoubleVector implements Serialize{
     return hashMap.keySet().toIntArray();
   }
 
-  @Override public RowType getType() {
-    return RowType.T_DOUBLE_SPARSE;
+  @Override public MLProtos.RowType getType() {
+    return MLProtos.RowType.T_DOUBLE_SPARSE;
   }
 
   @Override public long nonZeroNumber() {
@@ -288,7 +274,7 @@ public class SparseDoubleVector extends TIntDoubleVector implements Serialize{
     if (hashMap != null) {
       ObjectIterator<Int2DoubleMap.Entry> iter = this.hashMap.int2DoubleEntrySet().fastIterator();
       while (iter.hasNext()) {
-        if (iter.next().getDoubleValue() != 0.0) {
+        if (iter.next().getDoubleValue() != 0) {
           ret++;
         }
       }
@@ -637,7 +623,7 @@ public class SparseDoubleVector extends TIntDoubleVector implements Serialize{
   }
 
   @Override public double sparsity() {
-    return ((double) nonZeroNumber()) / (double)dim;
+    return ((double) nonZeroNumber()) / dim;
   }
 
   @Override
@@ -659,7 +645,7 @@ public class SparseDoubleVector extends TIntDoubleVector implements Serialize{
     Int2DoubleMap.Entry entry = null;
     while (iter.hasNext()) {
       entry = iter.next();
-      entry.setValue(entry.getDoubleValue() * x);
+      this.hashMap.put(entry.getIntKey(), entry.getDoubleValue() * x);
     }
     return this;
   }
@@ -686,30 +672,5 @@ public class SparseDoubleVector extends TIntDoubleVector implements Serialize{
 
   public Int2DoubleOpenHashMap getIndexToValueMap() {
     return hashMap;
-  }
-
-  @Override
-  public void serialize(ByteBuf buf) {
-    buf.writeInt(dim);
-    buf.writeInt(hashMap.size());
-    hashMap.forEach((key, value) -> {
-      buf.writeInt(key);
-      buf.writeDouble(value);
-    });
-  }
-
-  @Override
-  public void deserialize(ByteBuf buf) {
-    int dim = buf.readInt();
-    int length = buf.readInt();
-    Int2DoubleOpenHashMap data = new Int2DoubleOpenHashMap(length);
-    IntStream.range(0,length).forEach(i-> data.put(buf.readInt(), buf.readDouble()));
-    this.dim = dim;
-    this.hashMap = data;
-  }
-
-  @Override
-  public int bufferLen() {
-    return 4 + (4 + 8) * hashMap.size();
   }
 }

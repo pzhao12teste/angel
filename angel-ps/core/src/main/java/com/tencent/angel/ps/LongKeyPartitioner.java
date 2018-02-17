@@ -19,7 +19,6 @@ package com.tencent.angel.ps;
 
 import com.tencent.angel.conf.AngelConf;
 import com.tencent.angel.ml.matrix.MatrixContext;
-import com.tencent.angel.ml.matrix.PartitionMeta;
 import com.tencent.angel.protobuf.generated.MLProtos;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -49,23 +48,23 @@ public class LongKeyPartitioner implements Partitioner {
     this.conf = conf;
   }
 
-  @Override public List<PartitionMeta> getPartitions() {
-    List<PartitionMeta> partitions = new ArrayList<PartitionMeta>();
+  @Override public List<MLProtos.Partition> getPartitions() {
+    List<MLProtos.Partition> array = new ArrayList<MLProtos.Partition>();
     int id = 0;
-    int matrixId = mContext.getMatrixId();
+    int matrixId = mContext.getId();
     int row = mContext.getRowNum();
     long col = mContext.getColNum();
 
     int blockRow = mContext.getMaxRowNumInBlock();
     long blockCol = mContext.getMaxColNumInBlock();
-    int serverNum = conf.getInt(AngelConf.ANGEL_PS_NUMBER, AngelConf.DEFAULT_ANGEL_PS_NUMBER);
 
     if(col == -1) {
       blockRow = 1;
-
+      int serverNum = conf.getInt(AngelConf.ANGEL_PS_NUMBER, AngelConf.DEFAULT_ANGEL_PS_NUMBER);
       blockCol = Long.MAX_VALUE / serverNum / partNumPerPS * 2;
     } else {
       if(blockRow == -1 || blockCol == -1) {
+        int serverNum = conf.getInt(AngelConf.ANGEL_PS_NUMBER, AngelConf.DEFAULT_ANGEL_PS_NUMBER);
         if(row >= serverNum) {
           blockRow = (int) Math.min(row / serverNum, Math.max(1, DEFAULT_PARTITION_SIZE / col));
           blockCol = Math.min(DEFAULT_PARTITION_SIZE / blockRow, col);
@@ -88,24 +87,28 @@ public class LongKeyPartitioner implements Partitioner {
       maxValue = col;
     }
 
-    int startRow = 0;
-    int endRow = 0;
-    long startCol = 0;
-    long endCol = 0;
+    MLProtos.Partition.Builder partition = MLProtos.Partition.newBuilder();
     for (int i = 0; i < row; ) {
       for (long j = minValue; j < maxValue; ) {
-        startRow = i;
-        startCol = j;
-        endRow = (i <= (row - blockRow)) ? (i + blockRow) : row;
-        endCol = (j <= (col - blockCol)) ? (j + blockCol) : col;
-        partitions.add(new PartitionMeta(matrixId, id++, startRow, endRow, startCol, endCol));
+        int startRow = i;
+        long startCol = j;
+        int endRow = (i <= (row - blockRow)) ? (i + blockRow) : row;
+        long endCol = (j <= (col - blockCol)) ? (j + blockCol) : col;
+        partition.setMatrixId(matrixId);
+        partition.setPartitionId(id++);
+        partition.setStartRow(startRow);
+        partition.setStartCol(startCol);
+        partition.setEndRow(endRow);
+        partition.setEndCol(endCol);
+        array.add(partition.build());
+
         j = (j <= (col - blockCol)) ? (j + blockCol) : col;
       }
       i = (i <= (row - blockRow)) ? (i + blockRow) : row;
     }
 
-    LOG.debug("partition count: " + partitions.size());
-    return partitions;
+    LOG.debug("partition count: " + array.size());
+    return array;
   }
 
   @Override public int assignPartToServer(int partId) {

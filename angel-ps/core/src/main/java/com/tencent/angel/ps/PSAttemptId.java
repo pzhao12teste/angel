@@ -71,7 +71,7 @@ public class PSAttemptId extends Id {
    *
    * @return the parameter server id
    */
-  public ParameterServerId getPsId() {
+  public ParameterServerId getParameterServerId() {
     return psId;
   }
 

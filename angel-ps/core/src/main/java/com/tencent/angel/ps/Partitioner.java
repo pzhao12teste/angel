@@ -18,7 +18,7 @@
 package com.tencent.angel.ps;
 
 import com.tencent.angel.ml.matrix.MatrixContext;
-import com.tencent.angel.ml.matrix.PartitionMeta;
+import com.tencent.angel.protobuf.generated.MLProtos;
 import org.apache.hadoop.conf.Configuration;
 
 import java.util.List;
@@ -38,7 +38,7 @@ public interface Partitioner {
    * Generate the partitions for the matrix
    * @return the partitions for the matrix
    */
-  List<PartitionMeta> getPartitions();
+  List<MLProtos.Partition> getPartitions();
 
   /**
    * Assign a matrix partition to a parameter server

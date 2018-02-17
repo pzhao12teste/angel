@@ -48,7 +48,7 @@ public class SVMTest {
       // Feature number of train data
       int featureNum = 124;
       // Total iteration number
-      int epochNum = 5;
+      int epochNum = 10;
       // Validation Ratio
       double vRatio = 0.1;
       // Data format

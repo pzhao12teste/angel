@@ -46,8 +46,9 @@ public class LikelihoodFunc extends GetFunc {
   public PartitionGetResult partitionGet(PartitionGetParam partParam) {
     PartitionKey pkey = partParam.getPartKey();
 
-    pkey = psContext.getMatrixMetaManager().getMatrixMeta(pkey.getMatrixId())
-      .getPartitionMeta(pkey.getPartitionId()).getPartitionKey();
+    pkey = PSContext.get().getMatrixPartitionManager().
+            getPartition(pkey.getMatrixId(),
+                    pkey.getPartitionId()).getPartitionKey();
 
     int ws = pkey.getStartRow();
     int es = pkey.getEndRow();
@@ -59,7 +60,7 @@ public class LikelihoodFunc extends GetFunc {
 
     double ll = 0;
     for (int w = ws; w < es; w ++) {
-      ServerRow row = psContext.getMatrixStorageManager().getRow(pkey, w);
+      ServerRow row = PSContext.get().getMatrixPartitionManager().getRow(pkey, w);
       ll += likelihood(row, beta, lgammaBeta);
     }
 

@@ -18,7 +18,7 @@ package com.tencent.angel.client;
 
 import com.google.protobuf.ServiceException;
 import com.tencent.angel.RunningMode;
-import com.tencent.angel.common.location.Location;
+import com.tencent.angel.common.Location;
 import com.tencent.angel.conf.AngelConf;
 import com.tencent.angel.conf.MatrixConf;
 import com.tencent.angel.exception.AngelException;
@@ -28,7 +28,7 @@ import com.tencent.angel.master.MasterProtocol;
 import com.tencent.angel.ml.matrix.MatrixContext;
 import com.tencent.angel.ml.model.MLModel;
 import com.tencent.angel.ml.model.PSModel;
-import com.tencent.angel.protobuf.ProtobufUtil;
+import com.tencent.angel.protobuf.RequestConverter;
 import com.tencent.angel.protobuf.generated.ClientMasterServiceProtos.*;
 import com.tencent.angel.protobuf.generated.MLProtos.*;
 import com.tencent.angel.utils.HdfsUtil;
@@ -47,8 +47,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.DecimalFormat;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Angel application client. It provides the control interfaces for the application.
@@ -60,7 +61,7 @@ public abstract class AngelClient implements AngelClientInterface {
   protected final Configuration conf;
 
   /** matrices used in the application */
-  private final Map<String, MatrixContext> nameToMatrixMap;
+  private final List<MatrixProto> matrixList;
 
   /** rpc client to master */
   protected volatile MasterProtocol master;
@@ -82,14 +83,6 @@ public abstract class AngelClient implements AngelClientInterface {
   protected Location masterLocation;
 
   private static final DecimalFormat df = new DecimalFormat("#0.000000");
-
-  private final String clientId = UUID.randomUUID().toString();
-
-  private volatile Thread hbThread;
-
-  private final int hbIntervalMS;
-
-  private final AtomicBoolean stopped = new AtomicBoolean(false);
   
   /**
    * 
@@ -99,11 +92,9 @@ public abstract class AngelClient implements AngelClientInterface {
    */
   public AngelClient(Configuration conf){
     this.conf = conf;
-    nameToMatrixMap = new LinkedHashMap<>();
+    matrixList = new ArrayList<MatrixProto>();
     isExecuteFinished = false;
     isFinished = false;
-    hbIntervalMS = conf.getInt(AngelConf.ANGEL_CLIENT_HEARTBEAT_INTERVAL_MS,
-      AngelConf.DEFAULT_ANGEL_CLIENT_HEARTBEAT_INTERVAL_MS);
   }
   
   @SuppressWarnings("rawtypes")
@@ -148,31 +139,6 @@ public abstract class AngelClient implements AngelClientInterface {
     }
   }
 
-  protected void startHeartbeat() throws ServiceException {
-    if(master == null) {
-      LOG.error("Master has not been connected");
-      return;
-    }
-
-    master.clientRegister(null, ClientRegisterRequest.newBuilder().setClientId(clientId).build());
-    stopped.set(false);
-    hbThread = new Thread(() -> {
-      while(!stopped.get() && !Thread.interrupted()) {
-        try {
-          Thread.sleep(hbIntervalMS);
-          master.keepAlive(null, KeepAliveRequest.newBuilder().setClientId(clientId).build());
-        } catch (Throwable e) {
-          if(!stopped.get()) {
-            LOG.error("AngelClient " + clientId + " send heartbeat to Master failed");
-          }
-        }
-      }
-    });
-
-    hbThread.setName("client-heartbeat");
-    hbThread.start();
-  }
-
   @Override
   public void run() throws AngelException {
     if(master == null) {
@@ -190,14 +156,9 @@ public abstract class AngelClient implements AngelClientInterface {
   
   @Override
   public void addMatrix(MatrixContext mContext) throws AngelException {
-    if (nameToMatrixMap.containsKey(mContext.getName())) {
-      throw new AngelException("Matrix \"" + mContext.getName() + "\" already exist, please check it");
-    }
-
-    try {
-      mContext.init(conf);
-      nameToMatrixMap.put(mContext.getName(), mContext);
-    } catch (Throwable x) {
+    try{
+      matrixList.add(mContext.buildMatProto(conf));
+    } catch (Exception x) {
       throw new AngelException(x);
     }
   }
@@ -291,20 +252,6 @@ public abstract class AngelClient implements AngelClientInterface {
   @Override
   public void stop(int stateCode) throws AngelException {
     stop();
-  }
-
-  @Override
-  public void stop() throws AngelException {
-    nameToMatrixMap.clear();
-    isExecuteFinished = false;
-    isFinished = false;
-
-    if(!stopped.getAndSet(true)) {
-      if(hbThread != null) {
-        hbThread.interrupt();
-        hbThread = null;
-      }
-    }
   }
 
   @Override
@@ -568,18 +515,35 @@ public abstract class AngelClient implements AngelClientInterface {
   }
   
   protected void createMatrices() throws InvalidParameterException, ServiceException {
-    master.createMatrices(null, ProtobufUtil.buildCreateMatricesRequest(new ArrayList<MatrixContext>(nameToMatrixMap.values())));
-    List<String> matrixNames = new ArrayList<>(nameToMatrixMap.keySet());
-    waitForMatricesCreated(matrixNames);
+    CreateMatricesRequest createMatricsRequest =
+        RequestConverter.buildCreateMatricesRequest(matrixList);
+    master.createMatrices(null, createMatricsRequest);
+    waitForMatricesCreated(matrixList);
   }
   
-  private void waitForMatricesCreated(List<String> matrixNames) throws ServiceException {
-    CheckMatricesCreatedRequest request = CheckMatricesCreatedRequest.newBuilder().addAllMatrixNames(matrixNames).build();
-
-    int size = matrixNames.size();
+  private void waitForMatricesCreated(List<MatrixProto> matrixList) throws ServiceException {
+    CheckMatricesCreatedRequest.Builder builder = CheckMatricesCreatedRequest.newBuilder();
+    int size = matrixList.size();
+    for(int i = 0; i < size; i++) {
+      builder.addMatrixNames(matrixList.get(i).getName());
+    }
+    CheckMatricesCreatedRequest request = builder.build();
+    
+    boolean isAllCreated = true;
     while(true) {
       CheckMatricesCreatedResponse response = master.checkMatricesCreated(null, request);
-      if(response.getStatus() == 0) {
+      List<MatrixStatus> status = response.getStatusList();
+      assert(size == status.size());
+      
+      isAllCreated = true;
+      for(int i = 0; i < size; i++) {
+        if(status.get(i) != MatrixStatus.M_OK) {
+          isAllCreated = false;
+          break;
+        }
+      }
+      
+      if(isAllCreated) {
         return;
       }
       
@@ -799,7 +763,7 @@ public abstract class AngelClient implements AngelClientInterface {
     boolean isAllPSReady = true;
     while(true) {
       GetAllPSLocationResponse response = master.getAllPSLocation(null, GetAllPSLocationRequest.newBuilder().build());
-      List<PSLocationProto> psLocs = response.getPsLocationsList();
+      List<PSLocation> psLocs = response.getPsLocationsList();
       int size = psLocs.size();
       if(size == psNumber) {
         isAllPSReady = true;

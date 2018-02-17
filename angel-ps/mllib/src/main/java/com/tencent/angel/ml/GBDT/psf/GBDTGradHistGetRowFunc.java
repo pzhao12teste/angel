@@ -54,7 +54,6 @@ public class GBDTGradHistGetRowFunc extends GetRowFunc {
 
   @Override
   public PartitionGetResult partitionGet(PartitionGetParam partParam) {
-
     HistAggrParam.HistPartitionAggrParam param = (HistAggrParam.HistPartitionAggrParam) partParam;
     
     LOG.info("For the gradient histogram of GBT, we use PS to find the optimal split");
@@ -65,7 +64,7 @@ public class GBDTGradHistGetRowFunc extends GetRowFunc {
     gbtparam.regAlpha = param.getRegAlpha();
     gbtparam.regLambda = param.getRegLambda();
 
-    ServerDenseDoubleRow row = (ServerDenseDoubleRow) psContext.getMatrixStorageManager()
+    ServerDenseDoubleRow row = (ServerDenseDoubleRow) PSContext.get().getMatrixPartitionManager()
             .getRow(param.getMatrixId(), param.getRowId(), param.getPartKey().getPartitionId());
 
     SplitEntry splitEntry = GradHistHelper.findSplitOfServerRow(row, gbtparam);
@@ -127,7 +126,7 @@ public class GBDTGradHistGetRowFunc extends GetRowFunc {
         float leftSumHess = (float) row.getData().get(4);
         float rightSumGrad = (float) row.getData().get(5);
         float rightSumHess = (float) row.getData().get(6);
-        LOG.debug(String.format(
+        LOG.info(String.format(
             "psFunc: the best split after looping a split: fid[%d], fvalue[%d], loss gain[%f]"
                 + ", leftSumGrad[%f], leftSumHess[%f], rightSumGrad[%f], rightSumHess[%f]",
             fid, splitIndex, lossGain, leftSumGrad, leftSumHess, rightSumGrad, rightSumHess));
@@ -142,5 +141,4 @@ public class GBDTGradHistGetRowFunc extends GetRowFunc {
 
     return new GBDTGradHistGetRowResult(ResponseType.SUCCESS, splitEntry);
   }
-
 }

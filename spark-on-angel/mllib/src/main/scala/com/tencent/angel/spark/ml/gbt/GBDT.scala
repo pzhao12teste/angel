@@ -69,14 +69,6 @@ class GBDT {
     this
   }
 
-  def setLoss(loss: String): this.type = {
-    param.loss = loss.toLowerCase match {
-      case "logistic" => new LogisticLoss
-      case "leastsquare" => new LeastSquareLoss
-      case _ => throw new RuntimeException(s"wrong loss parameter: $loss")
-    }
-    this
-  }
 
   def train(trainset: RDD[Instance]): GBDTModel = {
     LOG.info("training GBDT model...")
@@ -110,7 +102,6 @@ object GBDT {
     val maxTreeNum = params.getOrElse("maxTreeNum", "3").toInt
     val minChildWeight = params.getOrElse("minChildWeight", "2.0").toDouble
     val learningRate = params.getOrElse("learningRate", "0.3").toDouble
-    val loss = params.getOrElse("loss", "logistic")
 
     val builder = SparkSession.builder()
       .master(mode)
@@ -141,7 +132,6 @@ object GBDT {
       .setFeatureNum(featureNum)
       .setMinChildWeight(minChildWeight)
       .setLearningRate(learningRate)
-      .setLoss(loss)
 
     val gbtModel = gbdt.train(dataSet)
 

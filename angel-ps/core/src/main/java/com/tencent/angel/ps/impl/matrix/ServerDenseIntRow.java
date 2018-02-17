@@ -16,7 +16,7 @@
 
 package com.tencent.angel.ps.impl.matrix;
 
-import com.tencent.angel.ml.matrix.RowType;
+import com.tencent.angel.protobuf.generated.MLProtos.RowType;
 import io.netty.buffer.ByteBuf;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -26,12 +26,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import java.util.Arrays;
 
 /**
  * The class represent dense int row on parameter server.
  */
-public class ServerDenseIntRow extends ServerIntRow {
+public class ServerDenseIntRow extends ServerRow {
   private final static Log LOG = LogFactory.getLog(ServerDenseIntRow.class);
 
   /** Byte array */
@@ -73,10 +72,6 @@ public class ServerDenseIntRow extends ServerIntRow {
    */
   public ServerDenseIntRow() {
     this(0, 0, 0, null);
-  }
-
-  @Override protected int getValue(int index) {
-    return data.get(index - (int) startCol);
   }
 
   @Override
@@ -193,15 +188,6 @@ public class ServerDenseIntRow extends ServerIntRow {
   @Override
   public int bufferLen() {
     return super.bufferLen() + 4 + dataBuffer.length;
-  }
-
-  @Override public void reset() {
-    try {
-      lock.writeLock().lock();
-      Arrays.fill(dataBuffer, (byte)0);
-    } finally {
-      lock.writeLock().unlock();
-    }
   }
 
   /**

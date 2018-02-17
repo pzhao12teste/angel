@@ -104,7 +104,6 @@ public class MetricsService extends AbstractService implements EventHandler<Metr
 
   @Override
   protected void serviceInit(Configuration conf) throws Exception {
-    super.serviceInit(conf);
     logWritter = new DistributeLog(conf);
     needWriteName = true;
     try {

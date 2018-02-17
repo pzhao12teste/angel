@@ -17,15 +17,16 @@
 
 package com.tencent.angel.spark.models.vector
 
+import com.tencent.angel.spark.client.PSClient
 import com.tencent.angel.spark.context.{AngelPSContext, PSContext}
-import com.tencent.angel.spark.{PSFunSuite, SharedPSContext, Utils}
+import com.tencent.angel.spark.{PSFunSuite, SharedPSContext}
 
 class PSVectorSuite extends PSFunSuite with SharedPSContext {
 
   private val dim = 10
   private val capacity = 10
   private var _psContext: PSContext = _
-  private var _psVector: DensePSVector = _
+  private var _psVector: PSVector = _
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -41,14 +42,13 @@ class PSVectorSuite extends PSFunSuite with SharedPSContext {
   test("toRemote") {
     val remoteVector = _psVector.toCache
 
-    _psVector.pull
-    Utils.assertSameElement(remoteVector.pullFromCache(), _psVector.pull.values)
+    assert(PSClient.instance().vectorOps.pull(_psVector).sameElements(remoteVector.pullFromCache()))
   }
 
   test("toBreeze") {
     val brzVector = _psVector.toBreeze
 
-    Utils.assertSameElement(brzVector.pull, _psVector.pull.values)
+    assert(PSClient.instance().vectorOps.pull(_psVector).sameElements(brzVector.pull()))
   }
 
   test("delete") {

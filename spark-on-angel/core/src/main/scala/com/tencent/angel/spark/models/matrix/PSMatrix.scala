@@ -17,21 +17,59 @@
 package com.tencent.angel.spark.models.matrix
 
 import com.tencent.angel.exception.AngelException
+import com.tencent.angel.ml.matrix.MatrixMeta
 import com.tencent.angel.ml.matrix.psf.get.base.{GetFunc, GetResult}
+import com.tencent.angel.ml.matrix.psf.update.enhance.map.MapFunc
 import com.tencent.angel.spark.context.PSContext
 import com.tencent.angel.spark.models.PSModel
+import com.tencent.angel.spark.models.vector.{DensePSVector, PSVector}
 
 abstract class PSMatrix(
-    val id: Int,
     val rows: Int,
-    val columns: Long) extends PSModel {
+    val columns: Long,
+    val meta: MatrixMeta) extends PSModel {
 
   private var deleted: Boolean = false
 
   def size: Long = rows * columns
 
-  override def toString: String = {
-    s"PSMatrix(id=$id rows=$rows cols=$columns)"
+  /**
+   * Operations for each row of `PSMatrix`
+   */
+
+  /**
+   * Push a array to `rowId` in matrix
+   */
+  def push(rowId: Int, array: Array[Double]) = {
+    psClient.vectorOps.push(getRow(rowId), array)
+  }
+
+  /**
+   * Pull a row to local from PS
+   */
+  def pull(rowId: Int): Array[Double] = {
+    psClient.vectorOps.pull(getRow(rowId))
+  }
+
+  /**
+   * Increment a row of matrix with `array`
+   */
+  def increment(rowId: Int, array: Array[Double]) = {
+    psClient.vectorOps.increment(getRow(rowId), array)
+  }
+
+  /**
+   * Update a row of matrix with `func`
+   */
+  def update(rowId: Int, func: MapFunc) = {
+    psClient.vectorOps.mapInPlace(getRow(rowId), func)
+  }
+
+  /**
+   * Aggregate
+   */
+  def aggregate(func: GetFunc): GetResult = {
+    psClient.matrixOps.aggregate(this, func)
   }
 
   /**
@@ -40,12 +78,12 @@ abstract class PSMatrix(
    * this matrix will occupy the PS resource all the time.
    */
   def destroy() = {
-    PSContext.instance().destroyMatrix(id)
+    PSContext.instance().destroyMatrix(this.meta)
     this.deleted = true
   }
 
-  def aggregate(func: GetFunc): GetResult = {
-    psClient.matrixOps.aggregate(this, func)
+  private[spark] def getRow(rowId: Int): PSVector = {
+    new DensePSVector(meta.getId, rowId, meta.getColNum.toInt)
   }
 
   private[spark] def assertValid() = {
@@ -55,7 +93,7 @@ abstract class PSMatrix(
   }
 
   private[spark] def assertCompatible(array: Array[Double]) = {
-    if (columns != array.length) {
+    if (meta.getColNum != array.length) {
       throw new AngelException(s"The target array's dimension does not" +
         s" match matrix dimension")
     }

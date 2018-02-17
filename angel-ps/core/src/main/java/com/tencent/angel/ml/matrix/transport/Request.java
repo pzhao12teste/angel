@@ -25,23 +25,37 @@ import io.netty.buffer.ByteBuf;
  */
 public abstract class Request implements Serialize {
 
+  /** parameter server id */
+  private ParameterServerId serverId;
+
   /** request context */
   private RequestContext context;
 
   /**
    * Create a new Request.
    *
+   * @param serverId parameter server id
    * @param context request context
    */
-  public Request(RequestContext context) {
+  private Request(ParameterServerId serverId, RequestContext context) {
+    this.serverId = serverId;
     this.context = context;
+  }
+
+  /**
+   * Create a new Request.
+   *
+   * @param serverId parameter server id
+   */
+  public Request(ParameterServerId serverId) {
+    this(serverId, new RequestContext());
   }
 
   /**
    * Create a new Request.
    */
   public Request() {
-    this(null);
+    this(null, null);
   }
 
   @Override
@@ -69,6 +83,24 @@ public abstract class Request implements Serialize {
   }
 
   public abstract int getEstimizeDataSize();
+
+  /**
+   * Get parameter server id.
+   * 
+   * @return ParameterServerId parameter server id.
+   */
+  public ParameterServerId getServerId() {
+    return serverId;
+  }
+
+  /**
+   * Set parameter server id.
+   * 
+   * @param serverId parameter server id
+   */
+  public void setServerId(ParameterServerId serverId) {
+    this.serverId = serverId;
+  }
 
   public abstract TransportMethod getType();
 }

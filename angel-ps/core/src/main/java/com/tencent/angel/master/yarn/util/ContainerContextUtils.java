@@ -162,7 +162,6 @@ public class ContainerContextUtils {
       taskCredentials.writeTokenStorageToStream(containerTokens_dob);
       taskCredentialsBuffer =
           ByteBuffer.wrap(containerTokens_dob.getData(), 0, containerTokens_dob.getLength());
-      containerTokens_dob.close();
 
       InetSocketAddress listenAddr = NetUtils.getRealLocalAddr(masterService.getRPCListenAddr());
       Apps.addToEnvironment(environment, AngelEnvironment.LISTEN_ADDR.name(), listenAddr
@@ -224,7 +223,7 @@ public class ContainerContextUtils {
     myEnv.putAll(env);
 
     Apps.addToEnvironment(myEnv, AngelEnvironment.PARAMETERSERVER_ID.name(),
-        Integer.toString(psAttemptId.getPsId().getIndex()));
+        Integer.toString(psAttemptId.getParameterServerId().getIndex()));
     Apps.addToEnvironment(myEnv, AngelEnvironment.PS_ATTEMPT_ID.name(),
         Integer.toString(psAttemptId.getIndex()));
 

@@ -18,8 +18,6 @@
 package com.tencent.angel.model.output.format;
 
 import com.tencent.angel.utils.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -33,7 +31,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
  * Model meta file, it includes matrix properties and partition meta
  */
 public class ModelFilesMeta {
-  private static final Log LOG = LogFactory.getLog(ModelFilesMeta.class);
   /**
    * Matrix id
    */

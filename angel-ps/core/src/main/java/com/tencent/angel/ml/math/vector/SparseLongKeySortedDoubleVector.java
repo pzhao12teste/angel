@@ -19,7 +19,7 @@ package com.tencent.angel.ml.math.vector;
 
 import com.tencent.angel.ml.math.TAbstractVector;
 import com.tencent.angel.ml.math.TVector;
-import com.tencent.angel.ml.matrix.RowType;
+import com.tencent.angel.protobuf.generated.MLProtos;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -46,12 +46,6 @@ public class SparseLongKeySortedDoubleVector extends TLongDoubleVector {
    */
   public double[] values;
 
-  /**
-   * init the empty vector
-   */
-  public SparseLongKeySortedDoubleVector() {
-    super(-1);
-  }
 
   /**
    * Init the vector with the vector dimension and index array capacity
@@ -129,10 +123,6 @@ public class SparseLongKeySortedDoubleVector extends TLongDoubleVector {
     return ret;
   }
 
-  @Override public TLongDoubleVector elemUpdate(LongDoubleElemUpdater updater, ElemUpdateParam param) {
-    throw new UnsupportedOperationException("Unsupportted operation");
-  }
-
   @Override
   public void clone(TVector row) {
     if(row instanceof SparseLongKeySortedDoubleVector) {
@@ -191,8 +181,8 @@ public class SparseLongKeySortedDoubleVector extends TLongDoubleVector {
   }
 
   @Override
-  public RowType getType() {
-    return RowType.T_DOUBLE_SPARSE_LONGKEY;
+  public MLProtos.RowType getType() {
+    return MLProtos.RowType.T_DOUBLE_SPARSE_LONGKEY;
   }
 
   @Override

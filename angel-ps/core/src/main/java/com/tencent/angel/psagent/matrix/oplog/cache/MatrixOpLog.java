@@ -25,12 +25,15 @@ import com.tencent.angel.ml.math.vector.DenseFloatVector;
 import com.tencent.angel.ml.math.vector.DenseDoubleVector;
 import com.tencent.angel.ml.math.vector.DenseIntVector;
 import com.tencent.angel.ml.matrix.MatrixMeta;
+import com.tencent.angel.ps.ParameterServerId;
+import com.tencent.angel.psagent.MatrixPartitionRouter;
 import com.tencent.angel.psagent.PSAgentContext;
 import com.tencent.angel.psagent.matrix.storage.MatrixStorage;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -101,13 +104,21 @@ public abstract class MatrixOpLog {
   /**
    * Split the update according to the matrix partitions
    * 
-   * @param psUpdateData partition -> row split list map
+   * @param psUpdateData ps id -> (partition id -> row split list) map
    */
-  public void split(Map<PartitionKey, List<RowUpdateSplit>> psUpdateData) {
+  public void split(Map<ParameterServerId, Map<PartitionKey, List<RowUpdateSplit>>> psUpdateData) {
     long startTime = System.currentTimeMillis();
     MatrixMeta matrixMeta = PSAgentContext.get().getMatrixMetaManager().getMatrixMeta(matrixId);
-    List<PartitionKey> partitions = PSAgentContext.get().getMatrixMetaManager().getPartitions(matrixId);
+    MatrixPartitionRouter router = PSAgentContext.get().getMatrixPartitionRouter();
     int row = matrixMeta.getRowNum();
+    
+    // Get partitions for the matrix
+    LOG.debug("split update for matrix " + matrixId);
+    List<PartitionKey> partitionInfos = router.getPartitionKeyList(matrixId);
+    LOG.debug("get matrix partitions from router size = " + partitionInfos.size());
+    for(int i = 0; i < partitionInfos.size(); i++) {
+      LOG.debug("partitionInfos[" + i + "]=" + partitionInfos.get(i));
+    }
     
     for (int rowId = 0; rowId < row; rowId++) {
       TVector vector = getRow(rowId);
@@ -125,17 +136,20 @@ public abstract class MatrixOpLog {
       }
 
       // Split this row according the matrix partitions
-      Map<PartitionKey, RowUpdateSplit> splits = RowUpdateSplitUtils.split(vector, partitions);
+      Map<PartitionKey, RowUpdateSplit> splits = RowUpdateSplitUtils.split(vector, partitionInfos);
       removeRow(rowId);
 
       // Add the splits to the result container
       for (Map.Entry<PartitionKey, RowUpdateSplit> entry : splits.entrySet()) {
-        List<RowUpdateSplit> rowSplits = psUpdateData.get(entry.getKey());
-        if(rowSplits == null) {
-          rowSplits = new ArrayList<>();
-          psUpdateData.put(entry.getKey(), rowSplits);
+        PartitionKey partitionKey = entry.getKey();
+        ParameterServerId psId = router.getPSId(partitionKey);
+        if (!psUpdateData.containsKey(psId)) {
+          psUpdateData.put(psId, new HashMap<PartitionKey, List<RowUpdateSplit>>());
         }
-        rowSplits.add(entry.getValue());
+        if (!psUpdateData.get(psId).containsKey(partitionKey)) {
+          psUpdateData.get(psId).put(partitionKey, new ArrayList<RowUpdateSplit>());
+        }
+        psUpdateData.get(psId).get(partitionKey).add(entry.getValue());
       }
     }
       
@@ -181,7 +195,7 @@ public abstract class MatrixOpLog {
    */
   TVector getRow(int rowIndex) {
     if(matrix instanceof RowbaseMatrix) {
-      return ((RowbaseMatrix) matrix).getRow(rowIndex);
+      return ((RowbaseMatrix) matrix).getTVector(rowIndex);
     } else {
       throw new UnsupportedOperationException("Unsupportted operation");
     }

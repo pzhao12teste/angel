@@ -38,8 +38,8 @@ public class FullUpdateParam extends UpdateParam {
   @Override
   public List<PartitionUpdateParam> split() {
     List<PartitionKey> partList = PSAgentContext.get()
-        .getMatrixMetaManager()
-        .getPartitions(matrixId);
+        .getMatrixPartitionRouter()
+        .getPartitionKeyList(matrixId);
 
     int size = partList.size();
     List<PartitionUpdateParam> partParams = new ArrayList<PartitionUpdateParam>(size);

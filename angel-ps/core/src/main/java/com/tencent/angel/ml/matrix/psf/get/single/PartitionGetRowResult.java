@@ -17,7 +17,6 @@
 
 package com.tencent.angel.ml.matrix.psf.get.single;
 
-import com.tencent.angel.ml.matrix.RowType;
 import com.tencent.angel.ml.matrix.psf.get.base.PartitionGetResult;
 import com.tencent.angel.protobuf.generated.MLProtos;
 import com.tencent.angel.ps.impl.matrix.*;
@@ -62,7 +61,7 @@ public class PartitionGetRowResult extends PartitionGetResult {
       return;
     }
 
-    RowType type = RowType.valueOf(buf.readInt());
+    MLProtos.RowType type = MLProtos.RowType.valueOf(buf.readInt());
     if (rowSplit == null) {
       switch (type) {
         case T_DOUBLE_DENSE: {
